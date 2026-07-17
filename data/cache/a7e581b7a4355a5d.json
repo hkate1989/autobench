@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 9\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:37:06.803Z",
+  "results": [
+    {
+      "title": "David Scott",
+      "snippet": "test pilot and NASA  astronaut  who was  the  seventh person to walk  on   the   Moon . Selected as part of  the  third group of  astronauts  in 1963, Scott flew to"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "flight, while  the  other two  landed  once apiece after previous orbital missions. Apart from these 24 men and  the  four  astronauts   on   the  Artemis II lunar"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    },
+    {
+      "title": "Apollo Lunar Module",
+      "snippet": "dramatized in  the  1998 miniseries From  the  Earth to  the   Moon  episode entitled \"Spider\". This is in reference to LM-3, used  on   Apollo   9 , which  the  crew named"
+    },
+    {
+      "title": "Alfred Worden",
+      "snippet": "and NASA  astronaut  who was command module pilot for  the  Apollo 15 lunar mission in 1971. One of  the  24 Apollo  astronauts  to reach  the   Moon , he orbited"
+    }
+  ]
+}

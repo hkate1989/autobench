@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 14\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:37:05.848Z",
+  "results": [
+    {
+      "title": "Apollo 14",
+      "snippet": "47, was  the  oldest U.S.  astronaut  to fly when he made his trip aboard  Apollo   14 , and he is  the  oldest person to walk  on   the   Moon .  Apollo   14 &#039;s Command"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "to flight status and commanded  Apollo   14 ,  the  third  successful   Moon  landing mission. All of these  astronauts  flew  on  Gemini, and except for White, each"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    },
+    {
+      "title": "Apollo Lunar Surface Experiments Package",
+      "snippet": " The  Apollo Lunar Surface Experiments Package (ALSEP) comprised a set of scientific instruments placed by  the   astronauts  at  the  landing site of each of"
+    },
+    {
+      "title": "Apollo Lunar Module",
+      "snippet": "landing a man  on   the   Moon  and returning him safely to  the  Earth\". This was followed by landings by Apollo 12 (LM-6 Intrepid) and  Apollo   14  (LM-8 Antares)"
+    }
+  ]
+}

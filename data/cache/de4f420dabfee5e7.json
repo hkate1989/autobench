@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 15\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:37:05.373Z",
+  "results": [
+    {
+      "title": "David Scott",
+      "snippet": " Apollo   15 ,  the  fourth lunar landing; he is one of four surviving  Moon  walkers and  the  only living commander of a spacecraft that  landed   on   the   Moon ."
+    },
+    {
+      "title": "Apollo 15",
+      "snippet": " Apollo   15  (July 26 – August 7, 1971) was  the  ninth crewed mission in  the  Apollo program and  the  fourth  Moon  landing. It was  the  first J mission, with"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "flight, while  the  other two  landed  once apiece after previous orbital missions. Apart from these 24 men and  the  four  astronauts   on   the  Artemis II lunar"
+    },
+    {
+      "title": "Apollo 17",
+      "snippet": " Apollo   15  and 16, Apollo 17 carried a Lunar Roving Vehicle. In addition to being used by  the   astronauts  for transport from station to station  on   the  mission&#039;s"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    }
+  ]
+}

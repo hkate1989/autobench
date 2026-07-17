@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 8\" carried the Lunar Roving Vehicle?",
+  "fetchedAt": "2026-07-17T03:40:34.152Z",
+  "results": [
+    {
+      "title": "Lunar Roving Vehicle",
+      "snippet": " The   Lunar   Roving   Vehicle  (LRV) is a battery-powered four-wheeled rover used on  the  Moon in  the  last three missions of  the  American Apollo program (15"
+    },
+    {
+      "title": "Lunar rover",
+      "snippet": " lunar  rover or Moon rover is a space exploration  vehicle  designed to move across  the  surface of  the  Moon.  The  Apollo program&#039;s  Lunar   Roving   Vehicle  was"
+    },
+    {
+      "title": "Zond 6",
+      "snippet": "(68-101B) in Earth parking orbit.  The  spacecraft  carried  a biological payload of turtles, flies, and bacteria. It also  carried  scientific probes including cosmic"
+    },
+    {
+      "title": "Rover (space exploration)",
+      "snippet": "operated for 11 months. NASA included Lunar  Roving   Vehicles  in three Apollo missions: Apollo 15 (which landed on  the  Moon July 30, 1971), Apollo 16 (which landed"
+    },
+    {
+      "title": "Luna 17",
+      "snippet": "lunar  roving   vehicles  whose conception had begun in  the  early 1960s, originally as part of  the  piloted  lunar  landing operations. This was  the  second"
+    }
+  ]
+}

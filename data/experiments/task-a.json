@@ -1,0 +1,132 @@
+{
+  "baseline": {
+    "taskId": "apollo_moon_landings",
+    "policy": "direct_search",
+    "predictions": [
+      "Apollo 17",
+      "Apollo 15"
+    ],
+    "metrics": {
+      "precision": 1,
+      "recall": 0.333,
+      "f1": 0.5
+    },
+    "failureAnalysis": {
+      "candidateOmission": [
+        "Apollo 11",
+        "Apollo 12",
+        "Apollo 14",
+        "Apollo 16"
+      ],
+      "falsePositives": [],
+      "unknownRejected": [],
+      "queryCount": 1,
+      "queries": [
+        "Apollo missions successfully landed astronauts on the Moon"
+      ]
+    }
+  },
+  "trials": [
+    {
+      "diagnosis": "candidate_omission_high",
+      "hypothesis": "broad_discovery_then_verify improves F1",
+      "intervention": "broad_discovery_then_verify",
+      "experiment": {
+        "taskId": "apollo_moon_landings",
+        "policy": "broad_discovery_then_verify",
+        "predictions": [],
+        "metrics": {
+          "precision": 0,
+          "recall": 0,
+          "f1": 0
+        },
+        "failureAnalysis": {
+          "candidateOmission": [
+            "Apollo 11",
+            "Apollo 12",
+            "Apollo 14",
+            "Apollo 15",
+            "Apollo 16",
+            "Apollo 17"
+          ],
+          "falsePositives": [],
+          "unknownRejected": [
+            "Apollo 17",
+            "Apollo 16",
+            "Apollo 13",
+            "Apollo 12",
+            "Apollo 11",
+            "Apollo 10",
+            "Apollo 7",
+            "Apollo 15",
+            "Apollo 14",
+            "Apollo 8",
+            "Apollo 9"
+          ],
+          "queryCount": 2,
+          "queries": [
+            "Apollo missions list",
+            "\"Which Apollo missions successfully landed astronauts on the Moon?\""
+          ]
+        }
+      },
+      "decision": "REJECT"
+    },
+    {
+      "diagnosis": "unknown_rejection_high",
+      "hypothesis": "broad_discovery_with_targeted_followup improves F1",
+      "intervention": "broad_discovery_with_targeted_followup",
+      "experiment": {
+        "taskId": "apollo_moon_landings",
+        "policy": "broad_discovery_with_targeted_followup",
+        "predictions": [
+          "Apollo 17",
+          "Apollo 16",
+          "Apollo 10",
+          "Apollo 15",
+          "Apollo 14"
+        ],
+        "metrics": {
+          "precision": 0.8,
+          "recall": 0.667,
+          "f1": 0.727
+        },
+        "failureAnalysis": {
+          "candidateOmission": [
+            "Apollo 11",
+            "Apollo 12"
+          ],
+          "falsePositives": [
+            "Apollo 10"
+          ],
+          "unknownRejected": [
+            "Apollo 13",
+            "Apollo 12",
+            "Apollo 11",
+            "Apollo 7",
+            "Apollo 8",
+            "Apollo 9"
+          ],
+          "queryCount": 12,
+          "queries": [
+            "Apollo missions list",
+            "\"Apollo 17\" successfully landed astronauts on the Moon?",
+            "\"Apollo 16\" successfully landed astronauts on the Moon?",
+            "\"Apollo 13\" successfully landed astronauts on the Moon?",
+            "\"Apollo 12\" successfully landed astronauts on the Moon?",
+            "\"Apollo 11\" successfully landed astronauts on the Moon?",
+            "\"Apollo 10\" successfully landed astronauts on the Moon?",
+            "\"Apollo 7\" successfully landed astronauts on the Moon?",
+            "\"Apollo 15\" successfully landed astronauts on the Moon?",
+            "\"Apollo 14\" successfully landed astronauts on the Moon?",
+            "\"Apollo 8\" successfully landed astronauts on the Moon?",
+            "\"Apollo 9\" successfully landed astronauts on the Moon?"
+          ]
+        }
+      },
+      "decision": "KEEP"
+    }
+  ],
+  "selectedIntervention": "broad_discovery_with_targeted_followup",
+  "decision": "KEEP"
+}

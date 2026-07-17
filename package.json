@@ -1,0 +1,1 @@
+{"name":"autobench","version":"0.1.0","private":true,"type":"module","scripts":{"phase0":"node src/cli.js validate","experiment":"node src/cli.js experiment","generalize":"node src/cli.js generalize","demo":"node src/server.js","test":"node --test"},"engines":{"node":">=20"}}

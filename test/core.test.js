@@ -1,0 +1,5 @@
+import test from"node:test";import assert from"node:assert/strict";import{Environment,AutoBenchOptimizer}from"../src/core.js";
+const task={id:"t",groundTruth:["A","B"]},search={};
+const policy=(name,predictions,unknowns=[])=>({name,run:async()=>({predictions,unknowns,queries:[name]})});
+test("environment reports precision, recall, and omissions",async()=>{const r=await new Environment({task,search}).evaluate(policy("p",["A","X"]));assert.deepEqual(r.metrics,{precision:.5,recall:.5,f1:.5});assert.deepEqual(r.failureAnalysis.candidateOmission,["B"]);});
+test("optimizer rejects broad then keeps targeted",async()=>{const policies={direct_search:policy("direct_search",["A"]),broad_discovery_then_verify:policy("broad_discovery_then_verify",[],["A","B"]),broad_discovery_with_targeted_followup:policy("broad_discovery_with_targeted_followup",["A","B"])};const r=await new AutoBenchOptimizer({environment:new Environment({task,search}),policies}).optimize();assert.equal(r.trials[0].decision,"REJECT");assert.equal(r.trials[1].decision,"KEEP");});

@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 16\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:36:51.230Z",
+  "results": [
+    {
+      "title": "John Young (astronaut)",
+      "snippet": "the  Apollo   16  mission in 1972. Before becoming an  astronaut , Young received his Bachelor of Science degree in Aeronautical Engineering from  the  Georgia"
+    },
+    {
+      "title": "Apollo 16",
+      "snippet": "colonel in  the  Air Force, Duke was 36 years old at  the  time of  Apollo   16 , which made him  the  youngest of  the  twelve  astronauts  who walked  on   the   Moon  during"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "flight, while  the  other two  landed  once apiece after previous orbital missions. Apart from these 24 men and  the  four  astronauts   on   the  Artemis II lunar"
+    },
+    {
+      "title": "Apollo 17",
+      "snippet": "in  the  fourth group of  astronauts  in 1965. Both Evans and Schmitt were making their first spaceflights. For  the  backup crews of  Apollo   16  and 17,  the  final"
+    }
+  ]
+}

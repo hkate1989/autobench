@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 10\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:36:51.886Z",
+  "results": [
+    {
+      "title": "John Young (astronaut)",
+      "snippet": "commanded  the  1966 Gemini 10 mission. In 1969, he flew as command module pilot  on   Apollo   10 , and became  the  first person to orbit  the   Moon  alone. In 1972"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "flight, while  the  other two  landed  once apiece after previous orbital missions. Apart from these 24 men and  the  four  astronauts   on   the  Artemis II lunar"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    },
+    {
+      "title": "Apollo Lunar Module",
+      "snippet": "sites; their corresponding ascent stages crashed into  the   Moon  following use. One ascent stage ( Apollo   10 &#039;s Snoopy) was discarded in a heliocentric orbit after"
+    },
+    {
+      "title": "Apollo 10",
+      "snippet": " Apollo   10  (May 18–26, 1969) was  the  fourth human spaceflight in  the  United States&#039; Apollo program and  the  second to orbit  the   Moon . NASA,  the  mission&#039;s"
+    }
+  ]
+}

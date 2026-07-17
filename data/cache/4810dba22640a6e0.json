@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 12\" successfully landed astronauts on the Moon?",
+  "fetchedAt": "2026-07-17T03:36:51.575Z",
+  "results": [
+    {
+      "title": "Surveyor 3",
+      "snippet": "successfully land. It was  the  first mission to carry a surface-soil sampling-scoop. Surveyor 3 was visited by  Apollo   12   astronauts  Pete Conrad and Alan Bean"
+    },
+    {
+      "title": "Surveyor program",
+      "snippet": "still  on   the   Moon ; none of  the  missions included returning them to Earth. Some parts of Surveyor 3 were returned to Earth by  the  crew of  Apollo   12 , which"
+    },
+    {
+      "title": "List of Apollo missions",
+      "snippet": "Administration (NASA), which  landed   the  first  astronauts   on   the   Moon .  The  program used  the  Saturn IB and Saturn V launch vehicles to lift  the  Command/Service Module"
+    },
+    {
+      "title": "List of Apollo astronauts",
+      "snippet": "flight, while  the  other two  landed  once apiece after previous orbital missions. Apart from these 24 men and  the  four  astronauts   on   the  Artemis II lunar"
+    },
+    {
+      "title": "Apollo 14",
+      "snippet": " the   astronauts  during their second EVA.  The  PSE had been flown  on   Apollo   12  and 13,  the  ASE  on  Apollo 13,  the  SIDE  on   Apollo   12 ,  the  CCIG  on   Apollo  12"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "query": "\"Apollo 15\" carried the Lunar Roving Vehicle?",
+  "fetchedAt": "2026-07-17T03:39:10.775Z",
+  "results": [
+    {
+      "title": "Lunar Roving Vehicle",
+      "snippet": " The   Lunar   Roving   Vehicle  (LRV) is a battery-powered four-wheeled rover used on  the  Moon in  the  last three missions of  the  American Apollo program (15"
+    },
+    {
+      "title": "Modular Equipment Transporter",
+      "snippet": "used only on Apollo 14 since  Apollo   15 &#039;s mission was changed to be  the  first to employ  the  motorized  Lunar   Roving   Vehicle , which transported both astronauts"
+    },
+    {
+      "title": "Apollo 15",
+      "snippet": "longer stay on  the  Moon and a greater focus on science than earlier landings.  Apollo   15  saw  the  first use of  the   Lunar   Roving   Vehicle .  The  mission began"
+    },
+    {
+      "title": "Lunar rover",
+      "snippet": " lunar  rover or Moon rover is a space exploration  vehicle  designed to move across  the  surface of  the  Moon.  The  Apollo program&#039;s  Lunar   Roving   Vehicle  was"
+    },
+    {
+      "title": "Apollo 15 operations on the Lunar surface",
+      "snippet": "James Irwin, who used  the  first  Lunar   Roving   Vehicle  to make three exploratory trips away from their landing site at  the  base of  the  Apennine Mountains,"
+    }
+  ]
+}
