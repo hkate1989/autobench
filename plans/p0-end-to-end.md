@@ -1,330 +1,473 @@
-# Seven-Hour End-to-End P0
+# Failure-Driven Research Agent R&D Loop — P0
 
 ## Goal
 
-Turn the existing Node.js vertical slice into one reproducible, demoable AutoBench loop without replacing its working architecture:
+Make the existing AutoBench vertical slice visibly operate as an automated R&D loop for research agents:
 
-benchmark → baseline → 3 bounded candidate strategies → deterministic evaluation → winner selection → held-out sanity check → one-screen before/after report
+```text
+baseline research agent
+→ analyze benchmark failures
+→ identify a concrete failure mode
+→ formulate a research-strategy hypothesis
+→ apply a bounded policy intervention
+→ run a controlled experiment
+→ KEEP or REJECT from ground-truth performance
+→ repeat when the hypothesis fails
+→ freeze the learned policy
+→ test that unchanged policy on an unseen task
+```
 
-The required command remains AUTOBENCH_REPLAY=1 npm run experiment. It must use committed MediaWiki caches, persist one complete experiment artifact, and give the UI everything needed to explain which search strategy won and why.
+P0 succeeds when one deterministic replay tells this story end to end: AutoBench diagnoses why direct search misses answers, rejects a plausible but unsuccessful broad-verification hypothesis, learns from that failed experiment, keeps a targeted-follow-up intervention that improves development F1, and transfers the frozen policy to an unseen same-family task for a qualitative sanity check.
+
+The required product claim is:
+
+> AutoBench diagnosed why a research agent was failing, tested research-strategy hypotheses against ground truth, kept what worked, and transferred the learned policy to an unseen task.
 
 ## Why This Matters
 
-The current repository already proves most of the technical path: fixed Apollo tasks, cached Wikipedia search, a baseline, two interventions, deterministic F1 scoring, an optimizer, persisted JSON, and a replay UI. P0 should make that loop complete and reproducible, not turn it into a generalized research-agent framework. The visible product claim is automated strategy optimization against a fixed benchmark.
+The product is not a benchmark loader, candidate ranker, or experiment database. Those mechanisms only make the R&D loop controlled and reproducible. The differentiated moment is that AutoBench uses observed failures to decide what research behavior to test next, treats rejected hypotheses as useful evidence, and produces a learned research policy rather than merely naming the highest row in a configuration table.
+
+The repository already contains the first real phenomenon to preserve. With committed MediaWiki replay caches:
+
+```text
+Development task: Apollo crewed Moon landings
+
+direct_search
+F1 0.500
+failure: four correct missions omitted
+
+→ hypothesis: broaden discovery, then verify in one batch
+→ broad_discovery_then_verify
+F1 0.000, delta -0.500
+REJECT
+failure learned from experiment: discovered candidates are all rejected
+
+→ hypothesis: verify each discovered candidate with a targeted follow-up
+→ broad_discovery_with_targeted_followup
+F1 0.727, delta +0.227 versus the incumbent baseline
+KEEP
+
+Unseen task: Apollo missions carrying the Lunar Roving Vehicle
+
+direct_search F1 0.400
+frozen learned policy F1 0.750
+qualitative transfer delta +0.350
+```
+
+P0 should expose and automate this phenomenon before expanding the benchmark or generalizing the infrastructure.
 
 ## Current State
 
-- The repository is tracked on `main`. This plan currently has uncommitted documentation edits; implementation must preserve them and any later user changes.
-- package.json defines a dependency-free Node.js 20 project. Existing tests and replay commands pass.
-- src/tasks.js contains the two fixed Apollo tasks already used by the demo:
-  - apollo_moon_landings is the development benchmark used for strategy selection.
-  - apollo_lunar_roving_vehicle is the single held-out example.
-- src/policies.js contains the direct-search baseline and two bounded candidate strategies.
-- src/search.js already provides live MediaWiki search plus deterministic cache replay. Existing targeted-follow-up queries for both tasks are committed.
-- src/core.js already owns policy evaluation, precision/recall/F1 calculation, failure analysis, and optimizer decisions.
-- src/cli.js already runs and persists development and held-out experiments, but through separate commands and two special-purpose artifacts.
-- public/ and src/server.js already render a one-screen replay, but the page does not show a serializable strategy configuration, all three candidates, exact config differences, reproducibility metadata, or structured evidence.
-- src/scientist.js is optional and is not connected to the current optimizer.
-- docs/EVALUATION.md still describes a generic five-dimension, 0–100 weighted evaluator and a +3-point threshold. That conflicts with this P0 plan's task-specific F1 evaluator and must be reconciled before evaluator implementation begins.
+- The project is a dependency-free Node.js 20 vertical slice. `npm test`, the development replay, and the unseen-task replay pass without network or model access.
+- `src/tasks.js` contains two fixed exhaustive-search tasks with exact mission-set ground truth:
+  - `apollo_moon_landings` is the development task used for diagnosis and experimentation.
+  - `apollo_lunar_roving_vehicle` is the unseen same-family transfer task.
+- `src/policies.js` contains the full P0 bounded intervention catalog already needed for the observed loop:
+  - `direct_search` is the baseline and initial incumbent.
+  - `broad_discovery_then_verify` is the first intervention and currently produces a real rejected experiment.
+  - `broad_discovery_with_targeted_followup` is the second intervention and currently produces a real kept experiment.
+- `src/core.js` already calculates precision, recall, F1, omissions, false positives, rejected unknowns, and query history. `AutoBenchOptimizer` already performs a two-step failure-driven loop, but diagnosis and proposal rules live inside the optimizer, hypotheses are generic policy-name strings, and trial records omit explicit before/after/delta fields.
+- `src/scientist.js` already represents a Scientist concept: it can return a bounded structured hypothesis from an LLM and has a deterministic fallback. It is not wired into `AutoBenchOptimizer`. The P0 required path must preserve this concept while making deterministic scientific reasoning first-class; an API call remains optional.
+- `src/cli.js` currently runs development optimization and unseen evaluation as separate commands. The unseen command hard-codes `broad_discovery_with_targeted_followup` instead of consuming the policy learned by the optimization run.
+- `data/experiments/task-a.json` already records a REJECT followed by a KEEP. `task-b.json` records the unseen improvement, but the two records are not yet one automatically connected run.
+- The current UI already presents baseline, trials, decisions, and an unseen comparison. Its visual hierarchy needs to emphasize diagnosis and hypotheses, and it currently overstates the unseen result as a transferable claim.
+- `docs/EVALUATION.md`, `docs/ARCHITECTURE.md`, and `TASKS.md` still describe a more generic configuration-search/evaluation platform. Their relevant P0 language must be reconciled during implementation, but rewriting the whole documentation set is not a prerequisite for this plan.
 
 ## Target State
 
-One replay command evaluates the baseline and exactly three declared candidate strategies on the existing development task, selects the highest-scoring eligible candidate using deterministic task correctness, then evaluates the baseline and selected candidate on the existing held-out task. It writes a self-contained run artifact and a latest artifact consumed by the UI.
+`AUTOBENCH_REPLAY=1 npm run experiment` performs one bounded scientific run without network access or an API key:
 
-The run artifact records:
+1. Run `direct_search` on the development task and score it against fixed ground truth.
+2. Analyze structured failures, not only the scalar score.
+3. Ask a Scientist component for one diagnosis, mechanism-based hypothesis, and allowed intervention from the bounded catalog.
+4. Run that intervention under the same task, search cache, and evaluator.
+5. Record the before score, after score, delta, and a first-class `KEEP` or `REJECT` decision.
+6. If rejected, retain the current incumbent, analyze the failed experiment for new information, and ask the Scientist for the next unused intervention.
+7. On the first kept experiment, freeze that policy as `learnedPolicy`. If no intervention is kept, freeze the baseline and explain why.
+8. Only after freezing, run the baseline and unchanged learned policy on the unseen task. The unseen result never feeds back into diagnosis, selection, or policy mutation.
+9. Persist enough structured history to replay and explain the science, then render the loop in its causal order.
 
-- benchmark and evaluator versions
-- backend identifier for MediaWiki search
-- model: null
-- baseline and candidate strategy configs
-- development predictions, evidence, primary score, diagnostic metrics, latency, cost, status, and errors
-- winner eligibility, ranking, selection reason, and exact config diff
-- held-out baseline and winner results
+The expected P0 run contains two controlled experiments, not three pre-ranked candidates:
 
-The UI presents the development result as benchmark-specific optimization. The one held-out example is explicitly a qualitative sanity check, not evidence of statistical or cross-domain generalization.
+- Experiment 1 is motivated by baseline candidate omissions and is rejected by lower ground-truth F1.
+- Experiment 2 is motivated by the rejected experiment's unknown-rejection pattern and is kept because it beats the current incumbent on ground-truth F1.
+
+The run ends with one explicit frozen learned policy and one qualitative unseen-task comparison. Additional benchmark examples are optional follow-up work only after this loop is complete.
 
 ## Non-Goals
 
-- Natural-language answer synthesis or a new answer-generation pipeline.
-- A five-dimension weighted evaluator or an overall quality score unrelated to the existing task metric.
-- New benchmark questions, additional cache collection, or a 5–20 item benchmark during this build.
-- Migrating to Python, adding dependencies, or introducing ResearchAgent, Evaluator, ExperimentRunner, or ExperimentStore class hierarchies.
-- General-purpose config generation, exhaustive grids, model-proposed candidates, or wiring LLMScientist into P0.
-- Statistical significance or universal-agent-improvement claims.
-- A generic dashboard, per-question navigation, cost accounting beyond the known zero-cost backend value, or database persistence.
+- A generic evaluation platform, configuration leaderboard, or exhaustive candidate search.
+- Evaluating every policy up front and selecting the highest-scoring one without a causal diagnosis/hypothesis chain.
+- Five-dimension quality scores that do not correspond to the exhaustive mission-retrieval task.
+- Requiring an LLM or `OPENAI_API_KEY` for diagnosis, hypothesis generation, tests, replay, or the demo.
+- Letting an LLM invent interventions, modify code, or escape the declared policy catalog.
+- Expanding to a five-example benchmark before the existing two-task scientific loop works end to end.
+- Claiming statistical significance, broad generalization, or cross-domain transfer from one unseen task.
+- Migrating from Node.js, replacing the MediaWiki adapter, introducing a database, or building generalized runner/store/config class hierarchies.
+- Natural-language answer synthesis, source-quality grading, user-defined evaluators, parallel execution, or advanced optimization algorithms.
 
 ## Design
 
-### Fixed visible flow
+### North Star loop and state transitions
 
-1. Use apollo_moon_landings as the only development example.
-2. Evaluate direct_search as the baseline.
-3. Evaluate exactly three candidate strategies declared in source order.
-4. Score every completed run with deterministic task-correctness F1.
-5. Exclude any candidate with a failed development example from winner selection while retaining its full failed record.
-6. Select the best eligible candidate and compare its development score with the baseline.
-7. Only after selection, run the baseline and selected candidate on apollo_lunar_roving_vehicle.
-8. Persist and render the complete before/after record.
+The optimizer is an R&D-loop orchestrator, not a candidate ranker. It maintains four pieces of state:
 
-### Evaluator
+- `incumbentPolicy`: the last policy accepted by ground-truth performance; initially `direct_search`.
+- `observation`: the result whose failures should be diagnosed; initially the baseline, then the most recent experiment even if it was rejected.
+- `history`: ordered scientific trials with diagnoses, hypotheses, interventions, results, and decisions.
+- `unusedInterventions`: bounded catalog entries not yet tested in this run.
 
-The P0 evaluator remains inside the existing Environment evaluation path in src/core.js. No evaluator class or weighted dimension framework is added.
+For each iteration:
 
-Primary optimization metric:
+```text
+Scientist analyzes observation
+→ proposes one unused bounded intervention
+→ Environment evaluates it under controlled conditions
+→ compare its F1 with incumbentPolicy F1
+→ KEEP: replace incumbent and freeze for P0
+→ REJECT: retain incumbent, make failed trial the next observation, repeat
+```
 
-- taskCorrectnessF1: the existing set-based F1 over predicted Apollo missions and fixed ground truth.
+This distinction matters after Experiment 1: the broad-verification policy is rejected and never becomes the incumbent, but its mass unknown-rejection pattern is valuable evidence for the next hypothesis. Experiment 2 is still adopted only if it beats the incumbent baseline.
 
-Useful diagnostics:
+P0 is deliberately bounded to at most two intervention experiments and freezes on the first `KEEP`. It also stops when there is no actionable diagnosis, no unused catalog intervention for that diagnosis, or an execution failure makes further scientific inference unsafe. This produces one visible repeat without turning the demo into open-ended autonomous search.
 
-- precision: fraction of predicted missions that are correct.
-- coverage: recall under a demo-friendly name; fraction of expected missions found.
-- evidenceSupport: fraction of predictions with at least one structured evidence record that contains the prediction and satisfies the task verification rule.
-- queryCount, latencyMs, and estimatedCost.
+### Scientist component
 
-There is no synthesized answer, no nominal correctness/completeness/citation/source/instruction score set, and no weighted overall score. docs/EVALUATION.md is the source of truth for these P0 semantics.
+`src/scientist.js` becomes the owner of scientific diagnosis and bounded hypothesis selection. `AutoBenchOptimizer` delegates those responsibilities instead of hard-coding them internally.
 
-### Strategy set and configuration
+The required contract is conceptually:
 
-Keep the existing policy objects. Add a small serializable config field to each policy rather than creating a separate AgentConfig subsystem. The bounded strategy set is:
+```js
+Scientist.propose({ observation, incumbent, history, availableInterventions })
+  -> {
+    source: "deterministic" | "llm" | "deterministic_fallback",
+    diagnosis: {
+      code: string,
+      summary: string,
+      evidence: object
+    },
+    hypothesis: {
+      statement: string,
+      expectedEffect: string
+    },
+    intervention: string
+  } | null
+```
 
-| Role | Strategy | Existing work |
+The P0 default is a deterministic Scientist using an explicit failure-mode catalog. Preserve `LLMScientist` as an optional bounded proposal provider in the same module or behind the same contract. When enabled, it may phrase or choose among allowed catalog entries, but schema validation must reject invented interventions and deterministic fallback must preserve the offline path.
+
+The deterministic catalog is:
+
+| Observed failure mode | Evidence used | Research hypothesis | Bounded intervention |
+|---|---|---|---|
+| `candidate_omission_high` | Ground-truth omissions exist and the direct query returned too few valid missions | Separating broad candidate discovery from verification should recover omitted missions while verification protects precision | `broad_discovery_then_verify` |
+| `unknown_rejection_high` | A broad experiment discovered candidates but placed them in `unknownRejected` instead of verifying them | Entity-level evidence is being lost in batch verification; a targeted query per candidate should recover valid missions while filtering invalid ones | `broad_discovery_with_targeted_followup` |
+
+Diagnosis priority is contextual and deterministic:
+
+1. If the observation contains rejected discovered candidates, diagnose `unknown_rejection_high`.
+2. Otherwise, if it contains ground-truth omissions, diagnose `candidate_omission_high`.
+3. Otherwise return no actionable hypothesis and stop.
+
+The Scientist must cite concrete counts or identifiers from `failureAnalysis` in `diagnosis.evidence`; a label with no evidence is insufficient. Hypothesis text must state a mechanism and expected metric effect, not merely say that a policy name “improves F1.”
+
+### Bounded interventions
+
+Keep the three existing policies and their current behavior wherever possible. They are not peers to rank; they have roles in a sequential research program:
+
+| Policy | Scientific role | Bounded behavior change |
 |---|---|---|
-| Baseline | direct_search | Reuse unchanged behavior |
-| Candidate 1 | broad_discovery_then_verify | Reuse existing behavior |
-| Candidate 2 | broad_discovery_with_targeted_followup | Reuse existing behavior |
-| Candidate 3 | broad_discovery_with_strict_targeted_followup | Add one stricter verification variant that reuses Candidate 2 queries and committed caches |
+| `direct_search` | Initial incumbent | One direct search query |
+| `broad_discovery_then_verify` | Experiment for omission failure | Separate broad mission discovery from batch verification |
+| `broad_discovery_with_targeted_followup` | Experiment for unknown-rejection failure | Verify each discovered mission with its own targeted follow-up |
 
-Each config exposes only behavior needed for the demo. The exact four immutable config snapshots are the P0 search space; there is no generic combinatorial generator:
+No strict fourth policy or generic combinatorial search space is required for P0. Each intervention is tried at most once. The intervention catalog and policy registry must agree at startup; an unknown or duplicate intervention is a fatal declaration error.
 
-| Strategy | queryBudget | discoveryMode | followUpMode | evidenceRule |
-|---|---:|---|---|---|
-| direct_search | 1 | direct | none | query-result mentions |
-| broad_discovery_then_verify | 2 | broad | batch | candidate and verification signal within the batch evidence window |
-| broad_discovery_with_targeted_followup | 20 | broad | per-candidate | candidate page exists and verification signal appears anywhere in that candidate query's results |
-| broad_discovery_with_strict_targeted_followup | 20 | broad | per-candidate | one result contains both candidate identity and verification signal |
+### Controlled experiment and decision semantics
 
-`queryBudget` is a hard upper bound, not a promise that every run issues that many queries. Config validation rejects duplicate strategy names, unknown fields, and runtime behavior that is not represented by one of these declared snapshots.
+Every trial holds all variables constant except the selected policy intervention:
 
-The strict third candidate is deliberately one intervention away from Candidate 2: it requires the candidate identity and task verification signal to occur in the same search result. It may win or lose based on the deterministic evaluator; the winner is never hard-coded.
+- same development task and ground truth
+- same committed MediaWiki cache inputs
+- same evaluator version and scoring logic
+- same policy implementation for a named intervention
+- no unseen-task result available to the Scientist or optimizer
+
+Each persisted trial makes the scientific reasoning auditable:
+
+```js
+{
+  iteration: 1,
+  diagnosis: { code, summary, evidence },
+  hypothesis: { statement, expectedEffect },
+  intervention: "broad_discovery_then_verify",
+  beforePolicy: "direct_search",
+  beforeScore: 0.500,
+  afterScore: 0.000,
+  delta: -0.500,
+  decision: "REJECT",
+  decisionReason: "after F1 did not exceed incumbent F1",
+  result: EnvironmentResult
+}
+```
+
+Decision rules are intentionally simple:
+
+- `KEEP` when the completed intervention's development F1 is strictly greater than the incumbent's development F1.
+- `REJECT` when completed F1 is equal to or lower than the incumbent's F1.
+- A failed experiment is visible as `status: "failed"`, has `afterScore: null` and `delta: null`, and is not silently scored as zero. It receives `decision: "REJECT"` with an execution-failure reason, then the run stops unless a clearly independent safe intervention remains.
+- Precision, recall, query count, omissions, false positives, and rejected unknowns explain results but do not override the F1 decision.
+- A rejected policy never becomes the incumbent. Its failure analysis may still motivate the next experiment.
+
+The development run returns:
+
+```js
+{
+  baseline: EnvironmentResult,
+  trials: ScientificTrial[],
+  learnedPolicy: {
+    name: string,
+    learnedFromIteration: number | null,
+    status: "learned" | "baseline_retained"
+  },
+  stopReason: string
+}
+```
+
+### Evaluator and failure analysis
+
+Use only metrics that genuinely measure exhaustive mission retrieval:
+
+- `precision = true positives / predictions`
+- `recall = true positives / ground-truth missions`
+- `f1` as the primary KEEP/REJECT metric
+- exact `candidateOmission` identifiers
+- exact `falsePositives` identifiers
+- `unknownRejected` identifiers emitted by the policy
+- query count and issued queries as behavioral diagnostics
+
+Do not add nominal correctness, completeness, citation-support, source-quality, or instruction-following dimensions. The policies produce mission sets rather than synthesized research reports, so those dimensions would create false evaluator sophistication.
+
+Version the task and evaluator lightly so the before/after comparison can be reproduced. Latency, backend, timestamp, and errors remain useful run metadata but are secondary to the causal experiment record. Update `docs/EVALUATION.md` during implementation so it no longer contradicts this P0 evaluator.
+
+### Learned-policy freeze and unseen transfer
+
+After a `KEEP`, serialize or otherwise snapshot the accepted policy identity and its bounded behavior fields as `learnedPolicy`. The unseen phase must receive that result programmatically; it must not hard-code `broad_discovery_with_targeted_followup`.
+
+Transfer discipline:
+
+1. Complete development diagnosis and all decisions.
+2. Freeze `learnedPolicy`.
+3. Load the unseen task only after the freeze boundary.
+4. Run `direct_search` and the unchanged learned policy on the unseen task.
+5. Report predictions, precision, recall, F1, omissions, and false positives.
+6. Do not diagnose, propose, tune, KEEP, or REJECT using unseen results.
+
+The expected replay comparison, `0.400 → 0.750`, is a phenomenon-preservation gate and a qualitative transfer sanity check. UI and documentation must not call it proof of generalization or statistical evidence. If no intervention is kept, transfer the retained baseline and clearly show that no learned policy change occurred.
+
+### Minimal persistence
+
+Persistence supports replay and explanation; it is not a P0 subsystem. Preserve the current JSON approach and avoid a generalized experiment store.
+
+The implementation may keep `task-a.json` and `task-b.json` for UI compatibility or replace them with one latest-run artifact, whichever requires fewer changes. In either case, one `npm run experiment` invocation must connect them with a shared run identity and programmatic `learnedPolicy`, and the stored data must include:
+
+- task/evaluator versions and timestamp
+- baseline result and failure analysis
+- ordered scientific trials
+- for every trial: diagnosis, hypothesis, intervention, before score, after score, delta, decision, and reason
+- frozen learned policy and stop reason
+- unseen baseline and frozen-policy results
+- structured execution errors
+
+Do not let artifact schema work block the loop. Existing artifact routes may remain if they can represent the causal chain safely.
+
+### UI priority
+
+Adapt the existing one-screen replay into a causal R&D timeline. The primary visual sequence is:
+
+```text
+Baseline
+→ Failure Diagnosis
+→ Hypothesis
+→ Experiment Result
+→ REJECT
+→ revised Failure Diagnosis
+→ revised Hypothesis
+→ Experiment Result
+→ KEEP
+→ Learned Policy
+→ Unseen Task Result
+```
+
+Required visible details:
+
+- Baseline predictions, F1, and the concrete omissions that triggered research.
+- Diagnosis wording with evidence, such as “4 of 6 correct missions were omitted.”
+- A mechanism-based hypothesis in plain language.
+- The bounded policy intervention that tests the hypothesis.
+- Before F1, after F1, signed delta, and prominent KEEP/REJECT badge.
+- The rejected experiment remains visible rather than being hidden behind the winner.
+- The frozen learned policy is explicitly named.
+- The unseen baseline and frozen-policy result appear last, labeled “qualitative transfer sanity check.”
+
+A generic experiment table, full queries, metadata, latency, config details, and persistence fields may appear below the primary timeline or behind disclosure controls. A dimension breakdown is omitted because the task has no legitimate dimension evaluator.
 
 ### Minimal module changes
 
 | Existing module | P0 action |
 |---|---|
-| src/tasks.js | Minimally add benchmark version, explicit development/held-out labels, evaluator version, and lightweight startup validation around the two existing tasks. Do not move tasks to JSON or add more examples. |
-| src/policies.js | Preserve all current policy logic; attach serializable configs, expose the search snippets already used as structured evidence, and add only the strict third candidate. |
-| src/search.js | Keep unchanged unless a tiny read-only result-normalization helper is needed. Preserve cache keys, replay behavior, and live fallback. |
-| src/core.js | Extend Environment.evaluate records with evidence diagnostics, metadata, latency/status/errors, and candidate eligibility. Change AutoBenchOptimizer to evaluate all three candidates and rank eligible results instead of stopping at the first KEEP. |
-| src/cli.js | Make experiment orchestrate development optimization and the post-selection held-out sanity check in one command; persist one homogeneous run artifact plus latest.json. Retain existing commands when cheap for compatibility. |
-| src/server.js | Replace the two experiment API routes with one latest-run route while leaving static serving intact. |
-| public/app.js and public/index.html | Adapt the existing one-screen UI to the P0 priority order; do not build new screens or client state. |
-| public/styles.css | Reuse existing styling and add only styles required by the new cards/table/diff. |
-| src/scientist.js | Leave unchanged and unused. |
-| test/core.test.js | Extend the current tests rather than replacing the test setup; add another test file only if it materially improves readability. |
+| `src/tasks.js` | Keep both tasks; add only lightweight development/unseen and version metadata needed to enforce the freeze boundary. |
+| `src/policies.js` | Preserve the three policies; optionally attach small serializable behavior descriptors so the learned policy can be frozen and shown. Do not add a fourth policy for candidate-count optics. |
+| `src/search.js` | Keep MediaWiki and replay-cache behavior unchanged. |
+| `src/scientist.js` | Make the Scientist contract first-class, add/retain deterministic catalog reasoning, and preserve the optional bounded LLM path with deterministic fallback. |
+| `src/core.js` | Keep `Environment` evaluation and failure analysis; make `AutoBenchOptimizer` orchestrate the loop through a Scientist dependency, explicit trial records, incumbent state, and KEEP/REJECT transitions. |
+| `src/cli.js` | Make one experiment command run development learning, freeze the returned policy, and then run the unseen comparison without hard-coding the winner. Keep legacy commands only when cheap. |
+| `data/experiments/` | Retain inspectable JSON replay artifacts; extend only enough to store the causal scientific history and transfer linkage. |
+| `src/server.js` | Preserve static serving and existing routes where possible. Change routes only if required by the chosen minimal artifact shape. |
+| `public/` | Reorder and enrich the existing UI into the R&D timeline; do not build a generic dashboard. |
+| `test/` | Extend the current small test suite around deterministic Scientist mappings, state transitions, phenomenon preservation, and unseen isolation. |
+| `docs/EVALUATION.md`, `docs/ARCHITECTURE.md`, `TASKS.md`, `README.md` | Align P0 language with the failure-driven scientific loop after the implementation path is proven. |
 
-No new runtime abstraction is planned. A tiny helper module is allowed only if implementation shows that keeping artifact validation or persistence in cli.js makes it untestable.
+### Error handling and bounded-stop behavior
 
-### Structured policy result
-
-Preserve predictions as the output being optimized. Extend the existing policy result only with evidence:
-
-- predictions: unique mission identifiers
-- evidence: records containing prediction, query, result title, and snippet
-- unknowns: rejected candidate identifiers
-- queries: issued query strings
-
-Evidence is inspectable evaluator input, not a generated prose answer.
-
-The evaluator derives `evidenceSupport` only from these records. A prediction is supported when at least one evidence record has the same normalized prediction identifier and its individual `title + snippet` satisfies that strategy's declared evidence rule. Concatenating unrelated results must not create support. Empty predictions produce evidence support `0`, not `1` or an undefined value.
-
-### Runtime contracts
-
-Implementation may keep these as plain validated objects; the names below define the serialized contract rather than requiring new classes:
-
-```js
-Policy.run(task, search) -> Promise<{
-  predictions: string[],
-  evidence: { prediction: string, query: string, title: string, snippet: string }[],
-  unknowns: string[],
-  queries: string[]
-}>
-
-Environment.evaluate(policy) -> Promise<ExperimentRecord>
-
-AutoBenchOptimizer.optimize() -> Promise<{
-  baseline: ExperimentRecord,
-  candidates: ExperimentRecord[],
-  selection: SelectionRecord
-}>
-```
-
-`Environment.evaluate` catches policy/search execution errors and returns a failed experiment record. Declaration/validation errors remain fatal startup errors because running an invalid benchmark or search space would make the comparison untrustworthy.
-
-### Experiment artifact
-
-The top-level artifact contains:
-
-- runId and createdAt
-- benchmarkVersion and evaluatorVersion
-- backend: wikipedia-mediawiki
-- model: null
-- promptVersion: null
-- status and errors
-- declared baseline and three candidate configs
-- development baseline and candidate experiment records
-- selected strategy, selection reason, score delta, and config diff
-- heldOutSanityCheck with baseline and selected-strategy records
-
-Each experiment record retains the current predictions, failure analysis, and queries while adding config, evidence, metrics, latencyMs, estimatedCost: 0, status, errors, and eligibleForSelection.
-
-Canonical status values are `completed`, `failed`, and, at the top-level only, `completed_with_errors`. Canonical structured errors contain `stage`, `name`, and `message`; stack traces are not persisted or rendered. A completed record has numeric metrics and no errors. A failed record has `metrics: null`, retains any partial queries/evidence that are safely available, has at least one error, and is never eligible for selection.
-
-Write a timestamped run file first, then atomically replace data/experiments/latest.json for the UI so the server cannot observe a partial JSON document. JSON remains sufficient; no database or generalized store is introduced. Search caches are immutable run inputs, not embedded copies; deterministic scores are reproducible while timestamps and measured latency may vary.
-
-### Winner selection and failures
-
-- Evaluate the baseline and all three candidates on identical development inputs with the same evaluator version.
-- A candidate is eligible only when every development example completed successfully. In this P0 there is one development example, so any failure makes it ineligible.
-- Failed examples receive status and structured errors, not a synthetic zero score.
-- Failed experiments remain in the persisted candidate list and UI table with eligibleForSelection: false.
-- Rank eligible candidates by taskCorrectnessF1, then evidenceSupport, then coverage, then lower query count, then stable declared order.
-- Report a strategy as improved only when its development taskCorrectnessF1 is strictly greater than the baseline. Otherwise label it best observed candidate and do not claim improvement.
-- The selected strategy is the highest-ranked eligible candidate even when it does not beat the baseline; `selection.outcome` distinguishes `improved`, `best_observed_no_improvement`, and `baseline_retained_no_eligible_candidate`. The baseline is used for the held-out comparison only in the last case.
-- Held-out results never affect selection.
-
-### Held-out interpretation
-
-The single apollo_lunar_roving_vehicle comparison is an inspectable qualitative sanity check. The UI shows baseline and winner predictions, omissions, false positives, and evidence so viewers can see what changed. It must not use language such as generalizes, statistically significant, or universally better.
-
-### Error handling
-
-- Invalid benchmark metadata or duplicate/malformed configs fail before the loop starts.
-- Policy/search failures become structured experiment errors with stage, error type, and message.
-- Missing replay caches name the strategy and query.
-- The optimizer continues evaluating later candidates after one candidate fails.
-- If every candidate is ineligible, the baseline remains selected and the artifact/UI explain why.
-- A held-out failure does not revise the development winner; it produces a failed held-out record and a top-level `completed_with_errors` status.
-- Persistence failure is fatal and must not replace an existing valid latest.json.
-- Tests use fake search results or committed replay caches and never require network or model access.
+- Invalid tasks, duplicate catalog interventions, or a Scientist proposal outside the policy registry fail before experiments run.
+- Missing replay cache errors identify the policy and query and remain visible; tests never require live access.
+- A malformed optional LLM response falls back to the deterministic Scientist and records the fallback source without changing the allowed intervention set.
+- A policy execution failure is recorded as a failed trial, never converted to F1 zero, and cannot be kept.
+- No actionable diagnosis, catalog exhaustion, repeated intervention, maximum two trials, first KEEP, or unrecoverable execution failure produces an explicit `stopReason`.
+- Failure to run the unseen task does not revise the learned policy or development decisions; it makes the qualitative transfer result unavailable with a structured error.
 
 ## Milestones
 
-### Milestone 1 — Freeze benchmark, configs, and structured evidence
+### Milestone 1 — Prove and preserve the phenomenon
 
-- [ ] Reconcile docs/EVALUATION.md with the P0 task-specific F1 metric, diagnostic definitions, strict failure eligibility, tie-breakers, outcome labels, and held-out sanity-check wording before evaluator code changes.
-- [ ] Add benchmarkVersion, evaluatorVersion, and explicit development/held-out metadata to the two tasks in src/tasks.js.
-- [ ] Add lightweight validation for the fixed task and strategy declarations.
-- [ ] Attach serializable config snapshots to the baseline and existing candidates.
-- [ ] Add broad_discovery_with_strict_targeted_followup as the third candidate using existing targeted queries and caches.
-- [ ] Return structured evidence from policies without creating natural-language answers.
-- [ ] Extend tests for fixed split metadata, config serialization, exactly three candidate configs, and evidence shape.
-
-Exit criteria:
-
-- Replay mode can execute the baseline and three declared candidates on Task A using existing caches, and every successful result contains predictions plus inspectable evidence.
-
-### Milestone 2 — Deterministic scoring, failure eligibility, and ranking
-
-- [ ] Extend Environment.evaluate with taskCorrectnessF1, precision, coverage, evidenceSupport, latency, status, errors, backend, and model metadata.
-- [ ] Preserve failed results without assigning synthetic quality scores.
-- [ ] Change AutoBenchOptimizer to evaluate all three candidates and exclude any failed candidate from selection.
-- [ ] Implement deterministic ranking and exact baseline-to-winner config diff.
-- [ ] Add tests for metric calculation, evidence support, all-candidate evaluation, deterministic tie-breaking, failed-candidate exclusion, and no-improvement behavior.
+- [ ] Treat the current committed-cache results as the P0 regression phenomenon: development baseline F1 `0.500`, broad batch-verification F1 `0.000`, targeted-follow-up F1 `0.727`, unseen baseline F1 `0.400`, and frozen targeted-follow-up F1 `0.750`.
+- [ ] Add a replay-backed regression test or deterministic fixture test that verifies the development sequence contains a real non-improving experiment followed by an improving experiment; do not hard-code a winning decision independently of measured scores.
+- [ ] Verify the first intervention's rejected result remains inspectable, including its omissions and `unknownRejected` evidence.
+- [ ] Verify the second intervention genuinely beats the incumbent under the same ground truth and evaluator.
+- [ ] Reconcile `docs/EVALUATION.md` with F1, precision, recall, and structured failure analysis before changing evaluator behavior.
+- [ ] Record any intentional cache, policy, task, or scoring change in this plan before accepting changed phenomenon numbers.
 
 Exit criteria:
 
-- One optimizer call returns the baseline, three visible candidate records, and a winner derived only from eligible development results.
+- Offline replay and tests reproduce one baseline, one evidence-backed REJECT, one evidence-backed KEEP, and the current unseen improvement without network access. Expanding the benchmark is not required.
 
-### Milestone 3 — One command, one artifact, held-out sanity check
+### Milestone 2 — Automate diagnosis → hypothesis → experiment → KEEP/REJECT
 
-- [ ] Make npm run experiment run Task A optimization followed by Task B baseline-versus-winner evaluation.
-- [ ] Ensure Task B is never read by the optimizer or used in winner selection.
-- [ ] Persist the complete reproducibility fields and all failures in a timestamped JSON artifact and data/experiments/latest.json.
-- [ ] Make latest.json replacement atomic and preserve the previous valid latest artifact if serialization or persistence fails.
-- [ ] Keep backend set to wikipedia-mediawiki and model set to null throughout the artifact.
-- [ ] Add one mocked or replay-backed end-to-end test covering baseline, three candidates, winner selection, held-out ordering, and artifact reload.
-
-Exit criteria:
-
-- AUTOBENCH_REPLAY=1 npm run experiment completes without network or API keys and produces one inspectable artifact for the exact P0 flow.
-
-### Milestone 4 — Priority-ordered one-screen report and demo hardening
-
-- [ ] Point the existing server and UI at latest.json.
-- [ ] Show the baseline development score first.
-- [ ] Show all three candidate scores/statuses, including ineligible failures.
-- [ ] Show the winning strategy and exact configuration diff.
-- [ ] Show the held-out baseline-versus-winner structured predictions, omissions, false positives, and evidence as the inspectable example of what improved.
-- [ ] Keep metadata and secondary diagnostics available but visually subordinate.
-- [ ] Commit one known-good replay artifact, update README.md and TASKS.md, and record implementation discoveries/progress here.
-- [ ] Run all tests, the clean replay command, and a manual UI smoke check.
+- [ ] Define the Scientist contract in `src/scientist.js` and implement the deterministic two-entry failure-mode catalog.
+- [ ] Preserve the optional bounded `LLMScientist` path behind the same output validation and deterministic fallback.
+- [ ] Move or delegate failure diagnosis and hypothesis selection from `AutoBenchOptimizer` to the Scientist component.
+- [ ] Replace generic hypotheses such as “policy improves F1” with mechanism-based statements and concrete diagnostic evidence.
+- [ ] Make `AutoBenchOptimizer` maintain incumbent, observation, history, unused interventions, and explicit stop reason.
+- [ ] Persist first-class trial fields: diagnosis, hypothesis, intervention, before policy/score, after score, delta, decision, decision reason, and result.
+- [ ] Implement strict score-driven state transitions: REJECT retains the incumbent and continues from the failed observation; KEEP replaces and freezes the incumbent.
+- [ ] Add tests for both catalog mappings, intervention allow-list validation, REJECT continuation, KEEP freeze, repeated-intervention prevention, no-actionable-failure stop, failed-trial handling, and deterministic fallback.
 
 Exit criteria:
 
-- In under 30 seconds, a viewer can identify the baseline score, compare three candidates, see the winning strategy/config change, and inspect the held-out before/after result without mistaking it for statistical generalization.
+- One optimizer call explains why each experiment was selected, shows the measured REJECT/KEEP decision, and returns `broad_discovery_with_targeted_followup` as the learned policy only because its measured development F1 exceeds the incumbent.
+
+### Milestone 3 — Freeze and test learned-policy transfer
+
+- [ ] Make `npm run experiment` execute the development R&D loop and consume its returned `learnedPolicy` for the unseen phase.
+- [ ] Remove the hard-coded learned policy from the unseen path.
+- [ ] Enforce that the unseen task is unavailable to the Scientist and optimizer until after the learned-policy freeze.
+- [ ] Run the unseen baseline and the exact frozen policy without further hypothesis generation or mutation.
+- [ ] Connect the development history and unseen comparison in the replay data with one run identity or an equally explicit linkage.
+- [ ] Add an integration test proving unseen ground truth cannot affect diagnosis, decisions, or the frozen policy.
+- [ ] Preserve the existing qualitative unseen phenomenon and label it accurately in artifacts and copy.
+
+Exit criteria:
+
+- A single offline command produces the complete scientific history, freezes the policy selected by development measurements, and then reports the unseen `0.400 → 0.750` comparison without hard-coded selection or test-set feedback.
+
+### Milestone 4 — Make the R&D loop visually obvious
+
+- [ ] Rework the current UI hierarchy into the required Baseline → Diagnosis → Hypothesis → Experiment → Decision → Learned Policy → Unseen Result timeline.
+- [ ] Render concrete diagnostic evidence and mechanism-based hypothesis text, not only policy names.
+- [ ] Keep the real rejected experiment prominent and show before/after/delta beside each KEEP/REJECT decision.
+- [ ] Show the frozen learned policy as the output of development R&D, then place the qualitative unseen comparison after a visible freeze boundary.
+- [ ] Label the unseen result “qualitative transfer sanity check” and remove claims that imply demonstrated generalization.
+- [ ] Move generic tables, queries, metadata, and implementation details to a visually secondary position; omit invented evaluator dimensions.
+- [ ] Keep committed replay data as the demo fallback, update `README.md`, `docs/ARCHITECTURE.md`, `TASKS.md`, and this plan's discoveries/progress, then run the complete demo path once.
+
+Exit criteria:
+
+- In a three-minute demo, a new viewer can state the baseline failure, the first rejected hypothesis, what AutoBench learned from that rejection, why the second intervention was kept, which policy was frozen, and what happened on the unseen task.
 
 ## Validation
 
-### Automated
+### Unit tests
 
-- Existing tests continue to pass.
-- Task metadata validation rejects invalid splits or duplicate strategy names.
-- All four configs round-trip through JSON.
-- Deterministic scoring reproduces precision, coverage, F1, and evidence support from stored outputs.
-- A failed candidate remains visible and cannot win even if other recorded fields are favorable.
-- The optimizer evaluates exactly three candidates and selects via the documented ordering.
-- Candidate order changes do not change ties except for the explicitly persisted declared-order index.
-- Failed runs have null quality metrics and structured errors; no display or aggregation path coerces them to zero.
-- A replay-backed or mocked full loop proves held-out execution happens only after development selection.
-- A held-out failure leaves development selection unchanged and marks the overall artifact completed_with_errors.
-- The persisted artifact reloads and contains backend: wikipedia-mediawiki and model: null.
-- A simulated write failure leaves the previous latest.json readable.
-- The server returns the latest artifact and static UI.
+- Precision, recall, F1, omissions, and false positives remain correct for exact mission sets.
+- Scientist maps direct-search omissions to the broad-discovery hypothesis with concrete evidence.
+- Scientist maps rejected unknowns to the targeted-follow-up hypothesis with concrete evidence.
+- Scientist never returns an intervention outside the bounded policy registry and never repeats a tested intervention.
+- Optional LLM absence, error, malformed output, or out-of-catalog output uses deterministic fallback.
+- A lower or equal after-F1 produces `REJECT`, retains the incumbent, and records the signed delta.
+- A higher after-F1 produces `KEEP`, replaces the incumbent, and freezes the learned policy.
+- Failed experiments retain structured errors, null scores/delta, and cannot be kept.
+- Stop reasons are explicit for first KEEP, no diagnosis, catalog exhaustion, repeat prevention, trial limit, and fatal execution failure.
 
-### Manual demo
+### Integration and phenomenon tests
 
-1. Run npm test.
-2. Run AUTOBENCH_REPLAY=1 npm run experiment.
-3. Inspect data/experiments/latest.json for the baseline, three candidates, winner/config diff, failures, and held-out block.
-4. Run npm run demo and verify the UI follows the required priority order.
-5. Inspect the held-out predictions and evidence and confirm the copy calls it a qualitative sanity check.
-6. Confirm no API key or network access is required.
+- Committed-cache replay reproduces `0.500 → 0.000 REJECT → 0.727 KEEP` on the development task.
+- The second diagnosis is derived from the rejected experiment while the comparison incumbent remains `direct_search`.
+- Trial records contain diagnosis, hypothesis, intervention, before score, after score, delta, decision, and decision reason.
+- A single command passes the optimizer's returned learned policy into unseen evaluation rather than selecting by name in CLI code.
+- The unseen task is not accessed until after development decisions and policy freeze.
+- Committed-cache replay reproduces the qualitative `0.400 → 0.750` unseen comparison.
+- Running without an API key or network produces the same policies, decisions, and deterministic scores.
+
+### Manual three-minute demo
+
+1. Run `AUTOBENCH_REPLAY=1 npm run experiment`.
+2. Open `npm run demo` and identify the direct-search baseline and its four missed missions.
+3. Follow the first diagnosis and broad-discovery hypothesis to the `-0.500 REJECT` result.
+4. Show that AutoBench uses the rejected candidates to form the targeted-follow-up hypothesis.
+5. Follow the second experiment to the `+0.227 KEEP` result and frozen policy.
+6. Cross the visible freeze boundary and compare unseen-task F1 `0.400` with `0.750`.
+7. State explicitly that the unseen result is a qualitative same-family transfer sanity check, not statistical evidence of generalization.
 
 ## Risks
 
-- The third strict candidate may score worse than Candidate 2; this is acceptable and can make the experiment history more credible. It must not be manually favored.
-- Existing snippets can support a mission only indirectly. Evidence-support rules must remain deterministic and conservative, and the UI should show the underlying snippet.
-- One development example is highly prone to overfitting. The product claim must stay limited to automated improvement on this fixed benchmark.
-- One held-out example can reveal an obvious regression but cannot establish generalization.
-- Measured latency varies and must not outrank task correctness.
-- Broad refactoring would consume the build window and risk breaking the cached demo path; deviations from the listed module changes require a plan update first.
+- The existing first hypothesis fails dramatically. Hiding it would weaken the scientific story; changing policy behavior accidentally could also remove the real REJECT that makes the loop credible.
+- The second intervention still produces false positives. The UI must show precision and false positives alongside improved F1 so the result remains defensible.
+- Diagnosis rules can look like renamed policy routing if they omit evidence or mechanism. Every proposal must include observed failure data and a falsifiable expected effect.
+- The optional LLM path can distract from the product if it becomes a requirement. The deterministic Scientist is the P0 scientific engine; the LLM is only an optional bounded proposer.
+- One development and one unseen task are insufficient for statistical claims. Preserve the phenomenon and narrow claim before adding examples; do not let benchmark expansion block P0.
+- Comparing interventions against inconsistent references would make deltas misleading. Every trial's `beforeScore` is the current incumbent's score, even when the most recent rejected trial supplies the next diagnosis.
+- A hard-coded learned policy in the CLI would invalidate the transfer story. The unseen phase must consume the optimizer result.
+- Broad infrastructure refactors could break the working replay path. Changes outside the listed modules require a plan update before implementation.
 
 ## Decisions
 
-- 2026-07-16: Keep the existing Node modules and policy-oriented architecture; no Python migration or framework layer.
-- 2026-07-16: Keep the current two Apollo tasks. Task A is development; Task B is one qualitative held-out sanity check.
-- 2026-07-16: Optimize the existing set-based F1. Precision, coverage, and evidence support are diagnostics, not nominal weighted dimensions.
-- 2026-07-16: Preserve structured predictions and expose source snippets as evidence; do not synthesize natural-language answers.
-- 2026-07-16: Represent the external system as backend: wikipedia-mediawiki and model: null.
-- 2026-07-16: Use the three explicit candidate strategies as the entire P0 search space and add only one new strict verification variant.
-- 2026-07-16: Make any development failure disqualifying while preserving the failed record for the report.
-- 2026-07-16: Keep LLMScientist out of P0.
+- 2026-07-16: Define AutoBench P0 as a failure-driven research-agent R&D loop, not a candidate configuration ranking system.
+- 2026-07-16: Preserve the existing two-task replay phenomenon as the first completion gate; benchmark expansion is optional after the loop works.
+- 2026-07-16: Treat the two existing non-baseline policies as sequential, diagnosis-motivated interventions rather than peers in a precomputed leaderboard.
+- 2026-07-16: Make Scientist a first-class component with a deterministic required path and an optional bounded LLM path.
+- 2026-07-16: Use exact-set F1 as the KEEP/REJECT metric; use precision, recall, omissions, false positives, rejected unknowns, and queries for diagnosis and explanation.
+- 2026-07-16: Freeze on the first KEEP or after at most two interventions for the P0 demo.
+- 2026-07-16: Compare every intervention with the current incumbent. A rejected experiment may supply the next diagnosis but never becomes the incumbent.
+- 2026-07-16: Use the unseen task only after policy freeze and describe its result as a qualitative transfer sanity check.
+- 2026-07-16: Preserve Node.js, MediaWiki replay caches, current policies, failure analysis, optimizer shell, JSON artifacts, and UI wherever possible.
 
 ## Discoveries
 
-- The repository is tracked and the working tree was clean when this revision began; the previous untracked-files discovery was stale and has been removed.
-- The evaluation specification has not yet been narrowed: its current five-dimension weighted objective conflicts with this plan and is now an explicit Milestone 1 documentation gate.
-- Existing tests, replay validation, optimization, and held-out commands pass.
-- Current Task A replay improves F1 from 0.500 to 0.727 with targeted follow-up; Task B moves from 0.400 to 0.750, but Task B is only a qualitative sanity check.
-- The current optimizer stops after the first KEEP and therefore does not yet expose three comparable candidate experiments.
-- The proposed strict third candidate can reuse the existing targeted-follow-up queries and committed cache files, avoiding new network-dependent fixture work.
-- LLMScientist exists but is unused by the optimizer and is unnecessary for the visible P0 loop.
+- The code already contains the desired scientific skeleton: baseline evaluation, structured failure analysis, deterministic diagnosis, bounded proposals, sequential trials, and KEEP/REJECT.
+- The current test explicitly proves a rejected broad intervention followed by a kept targeted intervention; this is a more compelling demo story than evaluating and ranking extra candidates.
+- The current development replay produces F1 `0.500`, `0.000`, and `0.727` in causal order. The rejected policy discovers candidates but rejects all of them, creating concrete evidence for targeted follow-up.
+- The current unseen replay produces F1 `0.400` for direct search and `0.750` for targeted follow-up, but CLI currently hard-codes that learned policy.
+- `src/scientist.js` is not dead weight: it already constrains proposals to the two real interventions and provides deterministic fallback. Its component boundary, not LLM dependence, is the part P0 should preserve and connect.
+- The existing UI already renders baseline, trial decisions, and unseen results, so P0 needs a hierarchy and data-contract change rather than a new dashboard.
+- The generic weighted evaluation specification does not fit a mission-set retrieval policy and should not drive P0 implementation.
 
 ## Progress
 
-- [x] Repository and referenced documentation inspected; current commands validated.
-- [x] Seven-hour P0 scope revised around the existing vertical slice.
-- [ ] P0 evaluation specification alignment not started.
+- [x] Re-reviewed architecture, evaluation, tasks, plan rules, implementation, tests, and replay artifacts.
+- [x] Re-ran tests plus both committed-cache phenomena without network access.
+- [x] Reframed the P0 execution plan around the automated R&D North Star.
 - [ ] Milestone 1 implementation not started.
 - [ ] Milestone 2 implementation not started.
 - [ ] Milestone 3 implementation not started.
