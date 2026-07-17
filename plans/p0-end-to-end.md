@@ -66,12 +66,12 @@ P0 should expose and automate this phenomenon before expanding the benchmark or 
   - `direct_search` is the baseline and initial incumbent.
   - `broad_discovery_then_verify` is the first intervention and currently produces a real rejected experiment.
   - `broad_discovery_with_targeted_followup` is the second intervention and currently produces a real kept experiment.
-- `src/core.js` already calculates precision, recall, F1, omissions, false positives, rejected unknowns, and query history. `AutoBenchOptimizer` already performs a two-step failure-driven loop, but diagnosis and proposal rules live inside the optimizer, hypotheses are generic policy-name strings, and trial records omit explicit before/after/delta fields.
-- `src/scientist.js` already represents a Scientist concept: it can return a bounded structured hypothesis from an LLM and has a deterministic fallback. It is not wired into `AutoBenchOptimizer`. The P0 required path must preserve this concept while making deterministic scientific reasoning first-class; an API call remains optional.
+- `src/core.js` calculates precision, recall, F1, omissions, false positives, rejected unknowns, and query history. `AutoBenchOptimizer` now delegates diagnosis and hypothesis selection to a Scientist, keeps observation separate from incumbent state, records explicit scientific trials, and derives KEEP/REJECT solely from measured F1.
+- `src/scientist.js` now provides the required deterministic two-entry failure-mode catalog plus the optional bounded LLM phrasing path with deterministic fallback. The optimizer uses the deterministic Scientist by default, so an API call remains optional.
 - `src/cli.js` currently runs development optimization and unseen evaluation as separate commands. The unseen command hard-codes `broad_discovery_with_targeted_followup` instead of consuming the policy learned by the optimization run.
-- `data/experiments/task-a.json` already records a REJECT followed by a KEEP. `task-b.json` records the unseen improvement, but the two records are not yet one automatically connected run.
+- `data/experiments/task-a.json` records the structured diagnosis, evidence, mechanism-based hypothesis, incumbent comparison, REJECT, revised observation, KEEP, and frozen development policy. `task-b.json` records the unseen improvement, but the two records are not yet one automatically connected run.
 - The current UI already presents baseline, trials, decisions, and an unseen comparison. Its visual hierarchy needs to emphasize diagnosis and hypotheses, and it currently overstates the unseen result as a transferable claim.
-- `docs/EVALUATION.md`, `docs/ARCHITECTURE.md`, and `TASKS.md` still describe a more generic configuration-search/evaluation platform. Their relevant P0 language must be reconciled during implementation, but rewriting the whole documentation set is not a prerequisite for this plan.
+- `docs/EVALUATION.md` is aligned with the exact-set F1 evaluator and observation-dependent scientific decisions. `docs/ARCHITECTURE.md` and `TASKS.md` still describe a more generic configuration-search/evaluation platform; aligning them belongs to later plan work, not Milestones 1–2.
 
 ## Target State
 
@@ -342,12 +342,12 @@ A generic experiment table, full queries, metadata, latency, config details, and
 
 ### Milestone 1 — Prove and preserve the phenomenon
 
-- [ ] Treat the current committed-cache results as the P0 regression phenomenon: development baseline F1 `0.500`, broad batch-verification F1 `0.000`, targeted-follow-up F1 `0.727`, unseen baseline F1 `0.400`, and frozen targeted-follow-up F1 `0.750`.
-- [ ] Add a replay-backed regression test or deterministic fixture test that verifies the development sequence contains a real non-improving experiment followed by an improving experiment; do not hard-code a winning decision independently of measured scores.
-- [ ] Verify the first intervention's rejected result remains inspectable, including its omissions and `unknownRejected` evidence.
-- [ ] Verify the second intervention genuinely beats the incumbent under the same ground truth and evaluator.
-- [ ] Reconcile `docs/EVALUATION.md` with F1, precision, recall, and structured failure analysis before changing evaluator behavior.
-- [ ] Record any intentional cache, policy, task, or scoring change in this plan before accepting changed phenomenon numbers.
+- [x] Treat the current committed-cache results as the P0 regression phenomenon: development baseline F1 `0.500`, broad batch-verification F1 `0.000`, targeted-follow-up F1 `0.727`, unseen baseline F1 `0.400`, and frozen targeted-follow-up F1 `0.750`.
+- [x] Add a replay-backed regression test or deterministic fixture test that verifies the development sequence contains a real non-improving experiment followed by an improving experiment; do not hard-code a winning decision independently of measured scores.
+- [x] Verify the first intervention's rejected result remains inspectable, including its omissions and `unknownRejected` evidence.
+- [x] Verify the second intervention genuinely beats the incumbent under the same ground truth and evaluator.
+- [x] Reconcile `docs/EVALUATION.md` with F1, precision, recall, and structured failure analysis before changing evaluator behavior.
+- [x] Record any intentional cache, policy, task, or scoring change in this plan before accepting changed phenomenon numbers.
 
 Exit criteria:
 
@@ -355,14 +355,14 @@ Exit criteria:
 
 ### Milestone 2 — Automate diagnosis → hypothesis → experiment → KEEP/REJECT
 
-- [ ] Define the Scientist contract in `src/scientist.js` and implement the deterministic two-entry failure-mode catalog.
-- [ ] Preserve the optional bounded `LLMScientist` path behind the same output validation and deterministic fallback.
-- [ ] Move or delegate failure diagnosis and hypothesis selection from `AutoBenchOptimizer` to the Scientist component.
-- [ ] Replace generic hypotheses such as “policy improves F1” with mechanism-based statements and concrete diagnostic evidence.
-- [ ] Make `AutoBenchOptimizer` maintain incumbent, observation, history, unused interventions, and explicit stop reason.
-- [ ] Persist first-class trial fields: diagnosis, hypothesis, intervention, before policy/score, after score, delta, decision, decision reason, and result.
-- [ ] Implement strict score-driven state transitions: REJECT retains the incumbent and continues from the failed observation; KEEP replaces and freezes the incumbent.
-- [ ] Add tests for both catalog mappings, intervention allow-list validation, REJECT continuation, KEEP freeze, repeated-intervention prevention, no-actionable-failure stop, failed-trial handling, and deterministic fallback.
+- [x] Define the Scientist contract in `src/scientist.js` and implement the deterministic two-entry failure-mode catalog.
+- [x] Preserve the optional bounded `LLMScientist` path behind the same output validation and deterministic fallback.
+- [x] Move or delegate failure diagnosis and hypothesis selection from `AutoBenchOptimizer` to the Scientist component.
+- [x] Replace generic hypotheses such as “policy improves F1” with mechanism-based statements and concrete diagnostic evidence.
+- [x] Make `AutoBenchOptimizer` maintain incumbent, observation, history, unused interventions, and explicit stop reason.
+- [x] Persist first-class trial fields: diagnosis, hypothesis, intervention, before policy/score, after score, delta, decision, decision reason, and result.
+- [x] Implement strict score-driven state transitions: REJECT retains the incumbent and continues from the failed observation; KEEP replaces and freezes the incumbent.
+- [x] Add tests for both catalog mappings, intervention allow-list validation, REJECT continuation, KEEP freeze, repeated-intervention prevention, no-actionable-failure stop, failed-trial handling, and deterministic fallback.
 
 Exit criteria:
 
@@ -453,6 +453,9 @@ Exit criteria:
 - 2026-07-16: Compare every intervention with the current incumbent. A rejected experiment may supply the next diagnosis but never becomes the incumbent.
 - 2026-07-16: Use the unseen task only after policy freeze and describe its result as a qualitative transfer sanity check.
 - 2026-07-16: Preserve Node.js, MediaWiki replay caches, current policies, failure analysis, optimizer shell, JSON artifacts, and UI wherever possible.
+- 2026-07-16: Lock phenomenon scores with replay-backed policy evaluations independent of optimizer routing, so later Scientist changes cannot mask a policy or cache regression.
+- 2026-07-16: Let the optional LLM path rephrase only the single intervention already licensed by deterministic failure evidence; it cannot change the required observation-dependent trajectory or expand the catalog.
+- 2026-07-16: Preserve current UI artifact compatibility by keeping `diagnosis` and `hypothesis` as display strings while recording their structure explicitly in `diagnosisSummary`, `diagnosticEvidence`, `expectedEffect`, and `observation`.
 
 ## Discoveries
 
@@ -463,13 +466,20 @@ Exit criteria:
 - `src/scientist.js` is not dead weight: it already constrains proposals to the two real interventions and provides deterministic fallback. Its component boundary, not LLM dependence, is the part P0 should preserve and connect.
 - The existing UI already renders baseline, trial decisions, and unseen results, so P0 needs a hierarchy and data-contract change rather than a new dashboard.
 - The generic weighted evaluation specification does not fit a mission-set retrieval policy and should not drive P0 implementation.
+- Milestone 1 required no changes to tasks, caches, policy behavior, normalization, or scoring. Independent replay tests reproduce all five expected F1 values and retain the broad experiment's 11 rejected candidates.
+- The rejected broad experiment can safely become the next observation without becoming the incumbent: the real second trial records observation `broad_discovery_then_verify`, incumbent `direct_search`, and before score `0.500`.
+- Counterfactual tests prove the trajectory is not `policy A → policy B → policy C`: no baseline omission stops immediately, no rejected unknowns prevents targeted follow-up, and an unexpectedly successful first intervention freezes immediately.
+- The structured replay trace preserves the current UI's existing fields, so Milestone 2 required no UI changes.
+- Independent review found and closed two fallback/error-shape gaps before acceptance: blank optional-LLM text now falls back deterministically, and failed experiments include an explicit `experiment_execution` stage.
+- Final Milestones 1–2 validation passes 26 tests and the replay optimizer emits the exact measured `0.500 → 0.000 REJECT → 0.727 KEEP` trace with `first_improvement_kept` as its stop reason.
 
 ## Progress
 
 - [x] Re-reviewed architecture, evaluation, tasks, plan rules, implementation, tests, and replay artifacts.
 - [x] Re-ran tests plus both committed-cache phenomena without network access.
 - [x] Reframed the P0 execution plan around the automated R&D North Star.
-- [ ] Milestone 1 implementation not started.
-- [ ] Milestone 2 implementation not started.
+- [x] Milestone 1 complete: evaluator specification aligned and offline phenomenon regression tests passing.
+- [x] Milestone 2 complete: deterministic Scientist and observation-driven KEEP/REJECT loop implemented with counterfactual coverage.
+- [x] Milestones 1–2 final validation complete: full test suite and replay-backed development optimization passing.
 - [ ] Milestone 3 implementation not started.
 - [ ] Milestone 4 implementation not started.

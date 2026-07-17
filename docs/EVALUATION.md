@@ -1,384 +1,182 @@
-# AutoBench Evaluation Specification
+# AutoBench P0 Evaluation Specification
 
 ## 1. Purpose
 
-This document defines what "better" means.
+This document defines what counts as improvement for the current exhaustive-search research task. P0 evaluates policies that return sets of Apollo mission identifiers; it does not evaluate synthesized prose answers.
 
-AutoBench is only credible if the optimization target is explicit, reproducible, and difficult to game.
-
-The evaluator is therefore a core product component, not an afterthought.
-
----
-
-## 2. Primary Objective
-
-For the initial research-agent demo, optimize for:
+The evaluator exists to support a controlled scientific decision:
 
 ```text
-Overall Quality Score
+observed failure
+→ bounded policy intervention
+→ ground-truth measurement
+→ KEEP or REJECT
 ```
 
-computed from a weighted set of dimensions.
+Do not add nominal quality dimensions that the task output cannot genuinely measure.
 
-Recommended dimensions:
+---
 
-| Dimension | Weight |
-|---|---:|
-| Factual correctness | 35% |
-| Completeness | 25% |
-| Evidence/citation support | 20% |
-| Source quality | 10% |
-| Instruction following | 10% |
+## 2. Task and Ground Truth
 
-Scores should be normalized to a 0–100 scale.
-
-Example:
+The development task asks which Apollo missions successfully landed astronauts on the Moon. Its fixed ground-truth set is:
 
 ```text
-overall =
-0.35 * correctness
-+ 0.25 * completeness
-+ 0.20 * citation_support
-+ 0.10 * source_quality
-+ 0.10 * instruction_following
+Apollo 11
+Apollo 12
+Apollo 14
+Apollo 15
+Apollo 16
+Apollo 17
 ```
 
-Latency and cost are secondary metrics, not part of the primary score unless explicitly configured.
-
----
-
-## 3. Benchmark Structure
-
-Each benchmark example should contain:
-
-```json
-{
-  "id": "research_001",
-  "question": "...",
-  "rubric": [
-    "...",
-    "..."
-  ],
-  "metadata": {
-    "topic": "...",
-    "difficulty": "medium"
-  }
-}
-```
-
-Avoid benchmarks where the desired answer is purely stylistic.
-
-Prefer questions where good research behavior is observable.
-
----
-
-## 4. Recommended Demo Questions
-
-Choose questions that benefit from:
-
-- multiple sources
-- fact synthesis
-- uncertainty handling
-- source quality judgment
-- current or niche information
-
-Avoid questions that can be answered perfectly from model memory in one sentence.
-
-Good benchmark categories:
-
-1. compare two technical approaches using evidence
-2. summarize a recent research direction
-3. investigate a company or project with conflicting claims
-4. answer a question requiring source triangulation
-5. produce a recommendation with explicit constraints
-
-The live demo may show one question, while optimization runs on a larger hidden benchmark.
-
----
-
-## 5. Split Strategy
-
-Preferred:
+The unseen same-family task asks which Apollo missions carried the Lunar Roving Vehicle. Its fixed ground-truth set is:
 
 ```text
-development set
-→ used during optimization
-
-held-out test set
-→ used once for final comparison
+Apollo 15
+Apollo 16
+Apollo 17
 ```
 
-For a very small demo:
-
-- clearly label the benchmark as a development benchmark
-- do not claim general improvement beyond that benchmark
-
-Never tune directly against hidden evaluator outputs from the held-out test set.
+The development task may drive diagnosis, hypothesis selection, experiments, and KEEP/REJECT decisions. The unseen task is used only after the learned policy is frozen.
 
 ---
 
-## 6. Per-Dimension Rubrics
+## 3. Primary Metric
 
-### 6.1 Factual Correctness
-
-Score high when:
-
-- major claims are factually supported
-- no material contradictions appear
-- uncertainty is expressed appropriately
-
-Score low when:
-
-- important facts are wrong
-- claims exceed available evidence
-- unsupported certainty is used
-
----
-
-### 6.2 Completeness
-
-Score high when:
-
-- the answer addresses all major parts of the question
-- important caveats are included
-- the response provides enough context to act on
-
-Score low when:
-
-- major requested components are missing
-- the answer stops at surface-level summary
-
----
-
-### 6.3 Citation Support
-
-Score high when:
-
-- important factual claims are supported
-- citations point to relevant evidence
-- sources actually substantiate the claims made
-
-Score low when:
-
-- citations are decorative
-- sources do not support the statement
-- major factual claims are uncited
-
----
-
-### 6.4 Source Quality
-
-Score high when:
-
-- primary sources are used where appropriate
-- authoritative and recent sources are preferred
-- multiple sources are used for contested claims
-
-Score low when:
-
-- low-quality aggregators dominate
-- source selection is unrelated to the question
-- outdated sources are used without justification
-
----
-
-### 6.5 Instruction Following
-
-Score high when:
-
-- explicit user constraints are satisfied
-- requested format is respected
-- unnecessary content is avoided
-
-Score low when:
-
-- required sections are missing
-- constraints are violated
-
----
-
-## 7. Evaluator Output Schema
-
-Each evaluation should return structured output.
-
-Example:
-
-```json
-{
-  "overall_score": 82.5,
-  "dimension_scores": {
-    "correctness": 90,
-    "completeness": 80,
-    "citation_support": 75,
-    "source_quality": 85,
-    "instruction_following": 80
-  },
-  "strengths": [
-    "..."
-  ],
-  "weaknesses": [
-    "..."
-  ],
-  "critical_errors": [],
-  "evaluator_version": "v1"
-}
-```
-
-Do not store only the final scalar score.
-
-The demo becomes much stronger when users can see *why* the winner scored better.
-
----
-
-## 8. Aggregate Metrics
-
-For each configuration, report:
+The primary metric is exact-set F1 over normalized mission identifiers.
 
 ```text
-mean overall score
-median overall score
-minimum score
-dimension means
-failure rate
-mean latency
-estimated cost
+true positives  = predicted missions present in ground truth
+false positives = predicted missions absent from ground truth
+false negatives = ground-truth missions absent from predictions
+
+precision = true positives / predicted missions
+recall    = true positives / ground-truth missions
+F1        = 2 × precision × recall / (precision + recall)
 ```
 
-The primary ranking metric is mean overall score.
+Use `0` when a denominator is empty or both precision and recall are zero. Persist precision, recall, and F1 rounded consistently with the implementation.
 
-Recommended tie-breakers:
-
-1. lower failure rate
-2. lower latency
-3. lower cost
-
-Do not use tiny decimal score differences as strong evidence of superiority.
+F1 is the sole quality metric used for policy adoption because the task requires both exhaustive coverage and correct filtering. Precision and recall explain the tradeoff but do not override the F1 decision.
 
 ---
 
-## 9. Minimum Improvement Threshold
+## 4. KEEP and REJECT
 
-A candidate should only be labeled a meaningful winner when:
+Each intervention is compared with the current incumbent policy on the same development task, ground truth, evaluator, and replay inputs.
 
 ```text
-candidate_score >= baseline_score + 3 points
+after F1 > incumbent F1  → KEEP
+after F1 <= incumbent F1 → REJECT
 ```
 
-Recommended demo threshold: **+3 absolute points on a 100-point scale**.
+Decisions must be computed from measured results. A policy name, catalog position, or expected replay outcome must never determine KEEP or REJECT independently of its score.
 
-This threshold is a heuristic for the demo, not a statistical guarantee.
+A rejected policy does not become the incumbent. Its structured failure analysis may become the next observation and motivate a different experiment.
 
-If improvement is smaller, present it as:
-
-```text
-best observed candidate
-```
-
-rather than:
-
-```text
-meaningfully improved agent
-```
+A failed experiment is not assigned a synthetic F1 of zero. Record the execution error, use null after-score and delta fields, reject the intervention for adoption, and keep the failure distinct from a completed low-scoring experiment.
 
 ---
 
-## 10. Evaluator Stability
+## 5. Failure Analysis
 
-Keep constant during one optimization run:
+The scalar score decides adoption; structured failures decide what to investigate next.
 
-- evaluator model
-- evaluator prompt
-- scoring rubric
-- benchmark version
-- aggregation logic
+Every completed evaluation records:
 
-Every evaluation record must include evaluator version.
+- `candidateOmission`: exact ground-truth missions missing from predictions
+- `falsePositives`: exact predicted missions absent from ground truth
+- `unknownRejected`: candidate missions discovered by a policy but rejected during verification
+- `queryCount`: number of issued search queries
+- `queries`: the issued query strings
 
-If any evaluator component changes, start a new comparison series.
+These fields support concrete diagnoses:
 
----
+| Observation | Diagnosis | Scientific use |
+|---|---|---|
+| Direct search omits correct missions | `candidate_omission_high` | Test whether broader candidate discovery recovers recall |
+| A broad experiment discovers but rejects candidates | `unknown_rejection_high` | Test whether entity-level follow-up improves verification |
 
-## 11. Guarding Against Evaluator Gaming
-
-Before accepting a winning configuration, inspect:
-
-- the largest score gains
-- the lowest-scoring examples
-- one random example
-- one example where baseline beat the winner
-
-Look for:
-
-- excessive verbosity
-- keyword stuffing
-- fake citations
-- evaluator-specific phrasing
-- answer format hacks
-
-A winner that only games the rubric is not a valid product result.
+The trajectory must remain observation-dependent. Absence of the required failure evidence means the associated intervention must not be proposed automatically.
 
 ---
 
-## 12. Demo Comparison
+## 6. Controlled Comparison
 
-For the live comparison, show:
+Within one development run, keep constant:
 
-```text
-Baseline score: 71
-Winner score:   84
-Delta:          +13
-```
+- task and ground truth
+- evaluator implementation and version
+- committed MediaWiki replay inputs
+- policy implementation associated with each named intervention
 
-Then show dimension deltas:
+Each scientific trial records:
 
-```text
-Correctness        +8
-Completeness       +14
-Citation support   +22
-Source quality     +9
-Instruction        +4
-```
+- observation and failure evidence
+- diagnosis
+- mechanism-based hypothesis
+- bounded intervention
+- incumbent policy
+- before F1
+- after F1
+- signed delta
+- KEEP/REJECT decision
+- decision reason
 
-Finally show the exact configuration diff.
-
-Example:
-
-```diff
-- max_search_queries: 2
-+ max_search_queries: 4
-
-- planning_enabled: false
-+ planning_enabled: true
-
-- critique_pass: false
-+ critique_pass: true
-```
-
-This connects the optimization decision to the observed improvement.
+Query count and latency may be reported as behavioral or operational diagnostics. They are not P0 adoption tie-breakers.
 
 ---
 
-## 13. Acceptance Criteria
+## 7. Phenomenon-Preservation Values
 
-The evaluation system is ready when:
+With the current committed caches and policies, replay must preserve:
 
-- identical stored outputs produce identical aggregate scores, or documented low evaluator variance
-- every experiment has per-example scores
-- failed runs are visible
-- baseline and candidates use identical evaluation logic
-- winning configuration can be explained through score breakdowns
-- the UI can render baseline vs winner
+| Phase | Policy | F1 | Expected scientific outcome |
+|---|---|---:|---|
+| Development baseline | `direct_search` | 0.500 | Diagnose omissions |
+| Development experiment 1 | `broad_discovery_then_verify` | 0.000 | REJECT from measured regression |
+| Development experiment 2 | `broad_discovery_with_targeted_followup` | 0.727 | KEEP from measured improvement |
+| Unseen baseline | `direct_search` | 0.400 | Qualitative comparison only |
+| Unseen frozen policy | `broad_discovery_with_targeted_followup` | 0.750 | Qualitative comparison only |
+
+These values are regression expectations, not hard-coded decisions. Tests must evaluate policy outputs and derive decisions from measured scores.
+
+An intentional change to tasks, caches, policies, normalization, or scoring may change these numbers, but it requires an explicit plan decision and a newly justified phenomenon baseline.
 
 ---
 
-## 14. Claims We Can Make
+## 8. Development and Unseen Isolation
 
-Safe demo claim:
+The unseen task must not influence:
 
-> AutoBench automatically searched a bounded agent-configuration space and found a configuration that performed better on our benchmark.
+- failure diagnosis
+- hypothesis generation
+- intervention selection
+- KEEP/REJECT decisions
+- learned-policy identity
 
-Avoid claiming:
+Only after development experimentation ends may the system freeze the learned policy and run it unchanged on the unseen task.
 
-> AutoBench made the agent universally better.
+The current unseen result is a qualitative same-family transfer sanity check. One task cannot establish statistical significance, broad generalization, or cross-domain transfer.
 
-Benchmark-specific improvement is enough for a strong demo.
+---
+
+## 9. Reproducibility and Failures
+
+Record a lightweight task/evaluator version with replay artifacts. Search or policy failures must remain visible with their stage, error name, and message. Missing replay caches must identify the failed query and must never trigger live network access in tests or required demo replay.
+
+The required deterministic path must run without an API key. Optional LLM-generated hypothesis wording or selection cannot expand the bounded intervention catalog or change the evaluator.
+
+---
+
+## 10. P0 Acceptance
+
+The evaluator portion of P0 is complete when offline tests demonstrate:
+
+1. the exact development baseline, rejected experiment, and kept experiment scores;
+2. KEEP/REJECT derived only from measured incumbent and intervention F1;
+3. failure analysis containing the evidence used by the next diagnosis;
+4. counterfactual trajectories that stop or change when omission or unknown-rejection evidence changes;
+5. immediate freeze when the first intervention unexpectedly succeeds;
+6. the exact unseen baseline and frozen-policy scores, with no unseen feedback into learning.

@@ -28,9 +28,47 @@
   },
   "trials": [
     {
+      "iteration": 1,
+      "observation": {
+        "policy": "direct_search",
+        "predictions": [
+          "Apollo 17",
+          "Apollo 15"
+        ],
+        "failureAnalysis": {
+          "candidateOmission": [
+            "Apollo 11",
+            "Apollo 12",
+            "Apollo 14",
+            "Apollo 16"
+          ],
+          "falsePositives": [],
+          "unknownRejected": [],
+          "queryCount": 1,
+          "queries": [
+            "Apollo missions successfully landed astronauts on the Moon"
+          ]
+        }
+      },
       "diagnosis": "candidate_omission_high",
-      "hypothesis": "broad_discovery_then_verify improves F1",
+      "diagnosisSummary": "4 ground-truth missions were omitted by the observed policy.",
+      "diagnosticEvidence": {
+        "observationPolicy": "direct_search",
+        "candidateOmissionCount": 4,
+        "candidateOmission": [
+          "Apollo 11",
+          "Apollo 12",
+          "Apollo 14",
+          "Apollo 16"
+        ],
+        "predictedCount": 2
+      },
+      "hypothesis": "Separating broad candidate discovery from verification should recover missions missed by a single direct query while verification protects precision.",
+      "expectedEffect": "Increase recall and F1 by expanding the candidate set before verification.",
       "intervention": "broad_discovery_then_verify",
+      "scientistSource": "deterministic",
+      "incumbentPolicy": "direct_search",
+      "beforeScore": 0.5,
       "experiment": {
         "taskId": "apollo_moon_landings",
         "policy": "broad_discovery_then_verify",
@@ -70,12 +108,71 @@
           ]
         }
       },
-      "decision": "REJECT"
+      "afterScore": 0,
+      "delta": -0.5,
+      "decision": "REJECT",
+      "decisionReason": "after F1 0.000 did not exceed incumbent F1 0.500"
     },
     {
+      "iteration": 2,
+      "observation": {
+        "policy": "broad_discovery_then_verify",
+        "predictions": [],
+        "failureAnalysis": {
+          "candidateOmission": [
+            "Apollo 11",
+            "Apollo 12",
+            "Apollo 14",
+            "Apollo 15",
+            "Apollo 16",
+            "Apollo 17"
+          ],
+          "falsePositives": [],
+          "unknownRejected": [
+            "Apollo 17",
+            "Apollo 16",
+            "Apollo 13",
+            "Apollo 12",
+            "Apollo 11",
+            "Apollo 10",
+            "Apollo 7",
+            "Apollo 15",
+            "Apollo 14",
+            "Apollo 8",
+            "Apollo 9"
+          ],
+          "queryCount": 2,
+          "queries": [
+            "Apollo missions list",
+            "\"Which Apollo missions successfully landed astronauts on the Moon?\""
+          ]
+        }
+      },
       "diagnosis": "unknown_rejection_high",
-      "hypothesis": "broad_discovery_with_targeted_followup improves F1",
+      "diagnosisSummary": "11 discovered candidates were rejected without entity-level verification.",
+      "diagnosticEvidence": {
+        "observationPolicy": "broad_discovery_then_verify",
+        "unknownRejectedCount": 11,
+        "unknownRejected": [
+          "Apollo 17",
+          "Apollo 16",
+          "Apollo 13",
+          "Apollo 12",
+          "Apollo 11",
+          "Apollo 10",
+          "Apollo 7",
+          "Apollo 15",
+          "Apollo 14",
+          "Apollo 8",
+          "Apollo 9"
+        ]
+      },
+      "hypothesis": "Batch verification is losing entity-specific evidence; verifying each discovered mission with a targeted follow-up should recover valid missions while filtering invalid ones.",
+      "expectedEffect": "Increase recall and F1 by resolving rejected candidates individually.",
       "intervention": "broad_discovery_with_targeted_followup",
+      "scientistSource": "deterministic",
+      "incumbentPolicy": "direct_search",
+      "beforeScore": 0.5,
       "experiment": {
         "taskId": "apollo_moon_landings",
         "policy": "broad_discovery_with_targeted_followup",
@@ -124,9 +221,20 @@
           ]
         }
       },
-      "decision": "KEEP"
+      "afterScore": 0.727,
+      "delta": 0.227,
+      "decision": "KEEP",
+      "decisionReason": "after F1 0.727 exceeded incumbent F1 0.500"
     }
   ],
+  "learnedPolicy": {
+    "name": "broad_discovery_with_targeted_followup",
+    "queryBudget": 20,
+    "unknownHandling": "targeted_followup",
+    "learnedFromIteration": 2,
+    "status": "learned"
+  },
+  "stopReason": "first_improvement_kept",
   "selectedIntervention": "broad_discovery_with_targeted_followup",
   "decision": "KEEP"
 }
