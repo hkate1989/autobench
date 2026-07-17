@@ -68,10 +68,10 @@ P0 should expose and automate this phenomenon before expanding the benchmark or 
   - `broad_discovery_with_targeted_followup` is the second intervention and currently produces a real kept experiment.
 - `src/core.js` calculates precision, recall, F1, omissions, false positives, rejected unknowns, and query history. `AutoBenchOptimizer` now delegates diagnosis and hypothesis selection to a Scientist, keeps observation separate from incumbent state, records explicit scientific trials, and derives KEEP/REJECT solely from measured F1.
 - `src/scientist.js` now provides the required deterministic two-entry failure-mode catalog plus the optional bounded LLM phrasing path with deterministic fallback. The optimizer uses the deterministic Scientist by default, so an API call remains optional.
-- `src/cli.js` currently runs development optimization and unseen evaluation as separate commands. The unseen command hard-codes `broad_discovery_with_targeted_followup` instead of consuming the policy learned by the optimization run.
-- `data/experiments/task-a.json` records the structured diagnosis, evidence, mechanism-based hypothesis, incumbent comparison, REJECT, revised observation, KEEP, and frozen development policy. `task-b.json` records the unseen improvement, but the two records are not yet one automatically connected run.
-- The current UI already presents baseline, trials, decisions, and an unseen comparison. Its visual hierarchy needs to emphasize diagnosis and hypotheses, and it currently overstates the unseen result as a transferable claim.
-- `docs/EVALUATION.md` is aligned with the exact-set F1 evaluator and observation-dependent scientific decisions. `docs/ARCHITECTURE.md` and `TASKS.md` still describe a more generic configuration-search/evaluation platform; aligning them belongs to later plan work, not Milestones 1–2.
+- `src/cli.js` now exposes a small development-to-transfer boundary: it completes optimization, validates and freezes the returned `learnedPolicy` descriptor against the existing registry, and only then creates the unseen environment. The unseen path consumes that exact descriptor, including when the baseline is retained.
+- One `npm run experiment` invocation now writes the unchanged development trace to `task-a.json` and an explicitly linked freeze boundary plus unseen comparison to `task-b.json`. No generic store or snapshot framework was added.
+- The single-screen replay console now renders the committed causal trace in presentation order: baseline failure, red rejected hypothesis, revised observation, green kept hypothesis, exact frozen descriptor, no-reoptimization gate, and qualitative unseen comparison.
+- `docs/EVALUATION.md`, the current-implementation note in `docs/ARCHITECTURE.md`, `TASKS.md`, and `README.md` now identify the failure-driven P0 loop and its narrow transfer claim. The older generic-platform material remains explicitly labeled historical context rather than being refactored during the demo milestone.
 
 ## Target State
 
@@ -370,13 +370,13 @@ Exit criteria:
 
 ### Milestone 3 — Freeze and test learned-policy transfer
 
-- [ ] Make `npm run experiment` execute the development R&D loop and consume its returned `learnedPolicy` for the unseen phase.
-- [ ] Remove the hard-coded learned policy from the unseen path.
-- [ ] Enforce that the unseen task is unavailable to the Scientist and optimizer until after the learned-policy freeze.
-- [ ] Run the unseen baseline and the exact frozen policy without further hypothesis generation or mutation.
-- [ ] Connect the development history and unseen comparison in the replay data with one run identity or an equally explicit linkage.
-- [ ] Add an integration test proving unseen ground truth cannot affect diagnosis, decisions, or the frozen policy.
-- [ ] Preserve the existing qualitative unseen phenomenon and label it accurately in artifacts and copy.
+- [x] Make `npm run experiment` execute the development R&D loop and consume its returned `learnedPolicy` for the unseen phase.
+- [x] Remove the hard-coded learned policy from the unseen path.
+- [x] Enforce that the unseen task is unavailable to the Scientist and optimizer until after the learned-policy freeze.
+- [x] Run the unseen baseline and the exact frozen policy without further hypothesis generation or mutation.
+- [x] Connect the development history and unseen comparison in the replay data with one run identity or an equally explicit linkage.
+- [x] Add an integration test proving unseen ground truth cannot affect diagnosis, decisions, or the frozen policy.
+- [x] Preserve the existing qualitative unseen phenomenon and label it accurately in artifacts and copy.
 
 Exit criteria:
 
@@ -384,13 +384,13 @@ Exit criteria:
 
 ### Milestone 4 — Make the R&D loop visually obvious
 
-- [ ] Rework the current UI hierarchy into the required Baseline → Diagnosis → Hypothesis → Experiment → Decision → Learned Policy → Unseen Result timeline.
-- [ ] Render concrete diagnostic evidence and mechanism-based hypothesis text, not only policy names.
-- [ ] Keep the real rejected experiment prominent and show before/after/delta beside each KEEP/REJECT decision.
-- [ ] Show the frozen learned policy as the output of development R&D, then place the qualitative unseen comparison after a visible freeze boundary.
-- [ ] Label the unseen result “qualitative transfer sanity check” and remove claims that imply demonstrated generalization.
-- [ ] Move generic tables, queries, metadata, and implementation details to a visually secondary position; omit invented evaluator dimensions.
-- [ ] Keep committed replay data as the demo fallback, update `README.md`, `docs/ARCHITECTURE.md`, `TASKS.md`, and this plan's discoveries/progress, then run the complete demo path once.
+- [x] Rework the current UI hierarchy into the required Baseline → Diagnosis → Hypothesis → Experiment → Decision → Learned Policy → Unseen Result timeline.
+- [x] Render concrete diagnostic evidence and mechanism-based hypothesis text, not only policy names.
+- [x] Keep the real rejected experiment prominent and show before/after/delta beside each KEEP/REJECT decision.
+- [x] Show the frozen learned policy as the output of development R&D, then place the qualitative unseen comparison after a visible freeze boundary.
+- [x] Label the unseen result “qualitative transfer sanity check” and remove claims that imply demonstrated generalization.
+- [x] Move generic tables, queries, metadata, and implementation details to a visually secondary position; omit invented evaluator dimensions.
+- [x] Keep committed replay data as the demo fallback, update `README.md`, `docs/ARCHITECTURE.md`, `TASKS.md`, and this plan's discoveries/progress, then run the complete demo path once.
 
 Exit criteria:
 
@@ -456,13 +456,20 @@ Exit criteria:
 - 2026-07-16: Lock phenomenon scores with replay-backed policy evaluations independent of optimizer routing, so later Scientist changes cannot mask a policy or cache regression.
 - 2026-07-16: Let the optional LLM path rephrase only the single intervention already licensed by deterministic failure evidence; it cannot change the required observation-dependent trajectory or expand the catalog.
 - 2026-07-16: Preserve current UI artifact compatibility by keeping `diagnosis` and `hypothesis` as display strings while recording their structure explicitly in `diagnosisSummary`, `diagnosticEvidence`, `expectedEffect`, and `observation`.
+- 2026-07-16: Implement the development-to-unseen boundary in the existing CLI rather than adding a runner or store: optimizer output is validated against the policy registry, shallow-frozen as a serializable descriptor plus executable policy, and transferred by name and bounded behavior fields.
+- 2026-07-16: Make unseen environment construction lazy and post-freeze. Transfer consumes `learnedPolicy.name`, never `selectedIntervention`, so a retained baseline is transferred without a fallback candidate.
+- 2026-07-16: Keep `npm run generalize` only as a legacy alias for the same complete in-process development-and-transfer run. Reloading an old descriptor against potentially changed executable code would weaken the exact-freeze claim without a policy-versioning subsystem that P0 does not need.
+- 2026-07-16: Treat unseen creation, baseline evaluation, and frozen-policy evaluation as transfer-only stages. A failure records structured stage/name/message data while preserving the completed development result and immutable freeze boundary; it never restarts optimization.
+- 2026-07-16: Implement Milestone 4 entirely in the existing static frontend. The UI reads `task-a.json` and `task-b.json` through existing routes, builds a pure presentation model, and never duplicates evaluation, Scientist, optimizer, or transfer logic.
+- 2026-07-16: Keep replay as the default demo mode. Optional regeneration uses the existing `AUTOBENCH_REPLAY=1 npm run experiment` command followed by a page refresh; no workflow-trigger endpoint or new backend service was added.
+- 2026-07-16: Use a compact three-stage development row followed by the frozen-policy/unseen-transfer row so the complete causal story fits a 1440×900 projection frame while collapsing to a vertical flow on narrower screens.
 
 ## Discoveries
 
 - The code already contains the desired scientific skeleton: baseline evaluation, structured failure analysis, deterministic diagnosis, bounded proposals, sequential trials, and KEEP/REJECT.
 - The current test explicitly proves a rejected broad intervention followed by a kept targeted intervention; this is a more compelling demo story than evaluating and ranking extra candidates.
 - The current development replay produces F1 `0.500`, `0.000`, and `0.727` in causal order. The rejected policy discovers candidates but rejects all of them, creating concrete evidence for targeted follow-up.
-- The current unseen replay produces F1 `0.400` for direct search and `0.750` for targeted follow-up, but CLI currently hard-codes that learned policy.
+- The unseen replay produces F1 `0.400` for direct search and `0.750` for the exact optimizer-returned frozen policy; the Milestone 3 runtime boundary and Milestone 4 presentation-link validation both prevent independent UI selection.
 - `src/scientist.js` is not dead weight: it already constrains proposals to the two real interventions and provides deterministic fallback. Its component boundary, not LLM dependence, is the part P0 should preserve and connect.
 - The existing UI already renders baseline, trial decisions, and unseen results, so P0 needs a hierarchy and data-contract change rather than a new dashboard.
 - The generic weighted evaluation specification does not fit a mission-set retrieval policy and should not drive P0 implementation.
@@ -472,6 +479,13 @@ Exit criteria:
 - The structured replay trace preserves the current UI's existing fields, so Milestone 2 required no UI changes.
 - Independent review found and closed two fallback/error-shape gaps before acceptance: blank optional-LLM text now falls back deterministically, and failed experiments include an explicit `experiment_execution` stage.
 - Final Milestones 1–2 validation passes 26 tests and the replay optimizer emits the exact measured `0.500 → 0.000 REJECT → 0.727 KEEP` trace with `first_improvement_kept` as its stop reason.
+- Synthetic runtime tests prove that changing optimizer output from policy X to policy Y changes the unseen policy executed, while a baseline-retained result executes `direct_search` as both the comparison baseline and frozen transferred policy.
+- Changing unseen ground truth changes unseen scores but leaves the real deterministic development diagnoses, `REJECT → KEEP` decisions, and learned descriptor byte-for-byte equivalent. The lazy factory is invoked only after development completes and descriptor validation succeeds.
+- The combined committed-cache replay preserves the full development trace, freezes `broad_discovery_with_targeted_followup` from iteration 2, and then reproduces unseen F1 `0.400 → 0.750` with delta `+0.350`.
+- Boundary review exposed malformed-descriptor and unseen-failure cases beyond the happy path. Registry identity, behavior fields, status, and learned iteration are now validated before unseen access; structured transfer failure tests prove development history and the frozen descriptor remain unchanged.
+- The existing artifact schema already contained every field needed for the presentation. Milestone 4 required no core, policy, evaluator, workflow, server-route, or experiment-schema change.
+- Focused presentation tests cover the committed causal trace, retained baseline, failed trial, failed transfer, frozen-policy linkage, and no-store replay loading. The complete suite now passes 46 tests.
+- Headless browser inspection at 1600×1000 and 1440×900 confirmed that the real replay fits in one projection frame with distinct REJECT/KEEP treatments and an explicit no-reoptimization boundary. All five existing HTTP routes returned `200` with their expected content types.
 
 ## Progress
 
@@ -481,5 +495,5 @@ Exit criteria:
 - [x] Milestone 1 complete: evaluator specification aligned and offline phenomenon regression tests passing.
 - [x] Milestone 2 complete: deterministic Scientist and observation-driven KEEP/REJECT loop implemented with counterfactual coverage.
 - [x] Milestones 1–2 final validation complete: full test suite and replay-backed development optimization passing.
-- [ ] Milestone 3 implementation not started.
-- [ ] Milestone 4 implementation not started.
+- [x] Milestone 3 complete: optimizer-returned policy freeze and unseen transfer boundary implemented, 40 tests passing, and the single-command replay reproducing the complete causal result.
+- [x] Milestone 4 complete: replay-first scientific-trace console implemented, 46 tests passing, all demo routes healthy, and the full causal story verified at projection size.

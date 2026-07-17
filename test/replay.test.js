@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { runDevelopmentAndTransfer } from "../src/cli.js";
 import { AutoBenchOptimizer, Environment } from "../src/core.js";
 import { policies } from "../src/policies.js";
 import { WikipediaSearch } from "../src/search.js";
@@ -116,4 +117,37 @@ test("committed replay produces the measured scientific trial trace", async () =
   assert.equal(result.learnedPolicy.name, "broad_discovery_with_targeted_followup");
   assert.equal(result.learnedPolicy.learnedFromIteration, 2);
   assert.equal(result.stopReason, "first_improvement_kept");
+});
+
+test("committed replay transfers the optimizer-returned frozen policy", async () => {
+  const optimizer = new AutoBenchOptimizer({
+    environment: new Environment({ task: tasks.moonLandings, search: replaySearch() }),
+    policies,
+  });
+  let unseenCreated = false;
+  const run = await runDevelopmentAndTransfer({
+    optimizer,
+    policyRegistry: policies,
+    createUnseenEnvironment: () => {
+      unseenCreated = true;
+      return new Environment({ task: tasks.lunarRover, search: replaySearch() });
+    },
+  });
+
+  assert.equal(unseenCreated, true);
+  assert.deepEqual(
+    run.development.trials.map(trial => [trial.afterScore, trial.decision]),
+    [
+      [0, "REJECT"],
+      [0.727, "KEEP"],
+    ],
+  );
+  assert.equal(run.development.learnedPolicy.name, run.learnedPolicy.name);
+  assert.equal(run.learnedPolicy.name, "broad_discovery_with_targeted_followup");
+  assert.equal(run.freezeBoundary.source, "development.learnedPolicy");
+  assert.deepEqual(run.freezeBoundary.policy, run.learnedPolicy);
+  assert.equal(run.unseen.baseline.metrics.f1, 0.4);
+  assert.equal(run.unseen.frozenPolicyResult.policy, run.learnedPolicy.name);
+  assert.equal(run.unseen.frozenPolicyResult.metrics.f1, 0.75);
+  assert.equal(run.unseen.qualitativeTransferDelta, 0.35);
 });

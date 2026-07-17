@@ -1,7 +1,29 @@
 {
-  "claim": "Experimentally discovered research strategies can improve performance on unseen tasks from the same task family.",
+  "claim": "Qualitative same-family transfer sanity check; not statistical evidence of generalization.",
   "taskId": "apollo_lunar_roving_vehicle",
+  "developmentArtifact": "task-a.json",
   "initializedWith": "broad_discovery_with_targeted_followup",
+  "developmentLearnedPolicy": {
+    "name": "broad_discovery_with_targeted_followup",
+    "queryBudget": 20,
+    "unknownHandling": "targeted_followup",
+    "learnedFromIteration": 2,
+    "status": "learned"
+  },
+  "freezeBoundary": {
+    "status": "frozen",
+    "source": "development.learnedPolicy",
+    "learnedFromIteration": 2,
+    "baselineRetained": false,
+    "policy": {
+      "name": "broad_discovery_with_targeted_followup",
+      "queryBudget": 20,
+      "unknownHandling": "targeted_followup",
+      "learnedFromIteration": 2,
+      "status": "learned"
+    }
+  },
+  "status": "complete",
   "baseline": {
     "taskId": "apollo_lunar_roving_vehicle",
     "policy": "direct_search",

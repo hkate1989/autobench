@@ -1,5 +1,39 @@
 # AutoBench Architecture
 
+> **Current P0 implementation:** AutoBench is a failure-driven R&D loop for research agents, implemented as a dependency-free Node.js vertical slice. The detailed generic-platform proposal later in this document is historical context, not the P0 runtime contract. See `plans/p0-end-to-end.md` and `docs/EVALUATION.md` for the authoritative behavior.
+
+## Current P0 data flow
+
+```text
+development baseline
+→ Scientist diagnoses observed failure evidence
+→ one bounded intervention experiment
+→ measured KEEP / REJECT
+→ repeat from the latest observation when rejected
+→ optimizer returns learnedPolicy
+→ freeze exact descriptor
+→ unseen baseline vs exact frozen policy, with no re-optimization
+→ committed JSON artifacts
+→ single-screen replay console
+```
+
+Current module boundaries are deliberately small:
+
+- `src/core.js`: exact-set evaluation and the observation-dependent optimizer loop
+- `src/scientist.js`: deterministic diagnosis, hypothesis, and bounded intervention selection
+- `src/policies.js`: baseline plus the bounded intervention catalog
+- `src/cli.js`: development-to-freeze-to-unseen orchestration and artifact writing
+- `data/experiments/task-a.json`: development scientific trace
+- `data/experiments/task-b.json`: explicit freeze boundary and unseen transfer result
+- `src/server.js`: static files and read-only artifact routes
+- `public/app.js`: pure artifact-to-presentation mapping and replay rendering; no experiment logic
+
+The demo defaults to committed replay for reliability. `npm run demo` serves the console; `AUTOBENCH_REPLAY=1 npm run experiment` regenerates both source artifacts through the existing end-to-end workflow.
+
+---
+
+## Historical platform proposal
+
 ## 1. System Purpose
 
 AutoBench is an optimization layer around an existing AI agent.

@@ -1,1 +1,39 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoBench — Experiment Replay</title><link rel="stylesheet" href="/styles.css"></head><body><main><header><p class="eyebrow">AUTOBENCH / VERTICAL SLICE</p><h1>Research strategy,<br><em>tested—not guessed.</em></h1><p class="lede">A replay of real exhaustive-search experiments against fixed ground truth.</p></header><section id="task-a"><p>Loading experiment…</p></section><section id="task-b"><p>Loading unseen task…</p></section></main><script type="module" src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07090d">
+    <title>AutoBench — Scientific Trace</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body data-state="loading">
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="AutoBench home">
+          <span class="brand-mark">A/B</span>
+          <span>AUTOBENCH</span>
+        </a>
+        <div class="mode-indicator" aria-label="Demo data mode">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>REPLAY</span>
+          <span class="mode-source">COMMITTED TRACE</span>
+        </div>
+      </header>
+
+      <main id="demo-root" aria-live="polite">
+        <section class="loading-state">
+          <p class="mono-label">LOADING SCIENTIFIC TRACE</p>
+          <div class="loading-line" aria-hidden="true"></div>
+        </section>
+      </main>
+
+      <footer class="page-footer">
+        <span>DETERMINISTIC MEDIAWIKI REPLAY</span>
+        <span>GROUND-TRUTH F1</span>
+        <span>NO API KEY REQUIRED</span>
+      </footer>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
