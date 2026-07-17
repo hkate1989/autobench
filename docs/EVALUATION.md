@@ -90,6 +90,9 @@ Every completed evaluation records:
 - `unknownRejected`: candidate missions discovered by a policy but rejected during verification
 - `queryCount`: number of issued search queries
 - `queries`: the issued query strings
+- `verificationVerdicts`: per-candidate accepted/rejected records with the exact query and ranked evidence result
+
+For verification policies, evidence is candidate-bound. An accepted candidate requires one individual search result in which the candidate identity and qualifying task phrase occur within the bounded context. Candidate identity from one result and qualifying keywords from another must never be joined. Each accepted verdict persists that exact result's rank, title, and snippet; rejected verdicts persist the missing-condition reason and null qualifying evidence.
 
 These fields support concrete diagnoses:
 
@@ -128,19 +131,22 @@ Query count and latency may be reported as behavioral or operational diagnostics
 
 ---
 
-## 7. Phenomenon-Preservation Values
+## 7. Current Audited Replay Values
 
-With the current committed caches and policies, replay must preserve:
+After candidate-bound evidence hardening, the current committed caches and policies produce:
 
 | Phase | Policy | F1 | Expected scientific outcome |
 |---|---|---:|---|
 | Development baseline | `direct_search` | 0.500 | Diagnose omissions |
 | Development experiment 1 | `broad_discovery_then_verify` | 0.000 | REJECT from measured regression |
-| Development experiment 2 | `broad_discovery_with_targeted_followup` | 0.727 | KEEP from measured improvement |
+| Development experiment 2 | `broad_discovery_with_targeted_followup` | 0.500 | REJECT because it ties the incumbent |
+| Development frozen policy | `direct_search` | 0.500 | Baseline retained; no intervention learned |
 | Unseen baseline | `direct_search` | 0.400 | Qualitative comparison only |
-| Unseen frozen policy | `broad_discovery_with_targeted_followup` | 0.750 | Qualitative comparison only |
+| Unseen frozen policy | `direct_search` | 0.400 | Exact retained baseline; delta 0.000 |
 
-These values are regression expectations, not hard-coded decisions. Tests must evaluate policy outputs and derive decisions from measured scores.
+The corrected targeted policy scores `1.000` in a post-hoc evaluation on the former unseen replay, but that is not a learned-policy transfer result: development rejected it, so the real freeze boundary transfers `direct_search`. Unseen performance must not override that decision, and this task cannot serve as fresh held-out evidence for future policy iteration.
+
+These values are regression expectations, not hard-coded decisions. Tests evaluate policy outputs and derive decisions from measured scores. The pre-hardening `0.727` development and `0.750` unseen values depended on cross-result evidence joins and are retired.
 
 An intentional change to tasks, caches, policies, normalization, or scoring may change these numbers, but it requires an explicit plan decision and a newly justified phenomenon baseline.
 
@@ -172,11 +178,11 @@ The required deterministic path must run without an API key. Optional LLM-genera
 
 ## 10. P0 Acceptance
 
-The evaluator portion of P0 is complete when offline tests demonstrate:
+The evaluator portion is complete when offline tests demonstrate:
 
-1. the exact development baseline, rejected experiment, and kept experiment scores;
+1. the exact development baseline and both measured rejected-experiment scores;
 2. KEEP/REJECT derived only from measured incumbent and intervention F1;
-3. failure analysis containing the evidence used by the next diagnosis;
+3. failure analysis containing the evidence used by the next diagnosis and exact candidate-bound verdict evidence;
 4. counterfactual trajectories that stop or change when omission or unknown-rejection evidence changes;
 5. immediate freeze when the first intervention unexpectedly succeeds;
-6. the exact unseen baseline and frozen-policy scores, with no unseen feedback into learning.
+6. the exact unseen baseline and retained frozen-policy scores, with no unseen feedback into learning.

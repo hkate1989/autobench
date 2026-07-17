@@ -24,6 +24,7 @@ The experiment trajectory is outcome-dependent. If the expected failure evidence
 - Real MediaWiki search with committed response caches for deterministic offline replay
 - Fixed Apollo exhaustive-search tasks with exact-set precision, recall, and F1 evaluation
 - A bounded intervention catalog: direct-search baseline, broad discovery with batch verification, and broad discovery with targeted follow-up
+- Candidate-bound verification: a candidate and its qualifying keywords must occur in the same individual result, with the exact ranked result persisted for audit
 - A first-class deterministic Scientist that converts observed failure evidence into structured diagnoses, mechanism-based hypotheses, and allowed interventions
 - An optional constrained LLM Scientist path with deterministic fallback; the required CLI path remains API-free and deterministic
 - An observation-driven optimizer with explicit incumbent state, scientific trial history, and measured `KEEP`/`REJECT` decisions
@@ -49,11 +50,16 @@ REJECT
 → new observation: 11 discovered candidates were rejected
 → hypothesis: verify each candidate with a targeted follow-up
 → broad_discovery_with_targeted_followup
-F1 0.727, delta +0.227 versus the incumbent
-KEEP
+F1 0.500, delta +0.000 versus the incumbent
+REJECT
+
+→ no intervention beat the baseline
+→ retain and freeze direct_search
 ```
 
-The same run then freezes the optimizer-returned descriptor and evaluates only `direct_search` and that exact frozen policy on the unseen task: F1 `0.400 → 0.750`. This is only a qualitative same-family transfer sanity check.
+The same run then freezes the optimizer-returned retained baseline and evaluates only the unseen baseline and that exact frozen descriptor: F1 `0.400 → 0.400`. No unseen result feeds back into policy selection.
+
+As a post-hoc diagnostic on the former held-out task—not part of transfer selection—the corrected targeted policy scores `1.000` and removes its former Apollo 12 and Apollo 10 false positives. AutoBench does not transfer it because it failed to improve development F1. That task must not be reused as fresh transfer evidence for future policy iteration.
 
 ## Run
 
@@ -63,9 +69,10 @@ Requires Node.js 20 or newer. No package installation, network access, or API ke
 npm test                              # full deterministic test suite
 AUTOBENCH_REPLAY=1 npm run experiment # development R&D loop + frozen unseen transfer
 AUTOBENCH_REPLAY=1 npm run generalize # legacy alias for the same complete replay
-npm run phase0                        # live MediaWiki search only when a cache is missing
 npm run demo                          # serve the recorded replay UI
 ```
+
+`npm run phase0` remains a historical “some candidate must improve” gate. It now exits non-zero, correctly signaling that no intervention beats the development baseline after evidence hardening.
 
 Open <http://localhost:4173> after starting the demo server. `LLMScientist` is optional; the current CLI uses the deterministic Scientist.
 
@@ -73,14 +80,14 @@ Open <http://localhost:4173> after starting the demo server. `LLMScientist` is o
 
 1. Run `npm run demo` and open <http://localhost:4173>. Replay mode is the reliable default and reads the committed artifacts.
 2. Follow baseline F1 `0.500` and four omissions into the red `REJECT` experiment.
-3. Show that its 11 rejected candidates become the next observation, producing the green `KEEP` experiment at F1 `0.727`.
-4. Cross the visible policy-freeze boundary and point out “NO RE-OPTIMIZATION.”
-5. Finish with the qualitative unseen comparison: `0.400 → 0.750`, delta `+0.350`.
+3. Show that its 11 rejected candidates become the next observation, producing a stricter targeted experiment at F1 `0.500`; the tie is correctly `REJECT`ed.
+4. Show the retained-baseline freeze boundary and point out “NO RE-OPTIMIZATION.”
+5. Finish with the honest unseen comparison: `0.400 → 0.400`, delta `+0.000`.
 
 To regenerate the artifacts before presenting, run `AUTOBENCH_REPLAY=1 npm run experiment`, then refresh the page. The UI does not duplicate or rerun experiment logic.
 
 ## Scope of the claim
 
-The demonstrated claim is narrow: on one fixed Apollo development task, AutoBench used observed failures to choose sequential research-strategy experiments, rejected a regression, and kept an intervention that improved ground-truth F1 from `0.500` to `0.727`.
+The demonstrated claim is narrow: on one fixed Apollo development task, AutoBench used observed failures to choose sequential research-strategy experiments, rejected a regression and a non-improving follow-up, and retained the baseline from measured ground-truth F1.
 
-The `0.400 → 0.750` unseen result is an inspectable qualitative sanity check on one related task. It is not statistical evidence of generalization, cross-domain transfer, or universal agent improvement.
+The current replay proves an auditable, outcome-dependent R&D and transfer boundary; it does not currently prove development improvement. The standalone unseen targeted score is diagnostic only—not statistical evidence of generalization, a valid learned transfer result, or universal agent improvement.

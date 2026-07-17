@@ -83,23 +83,24 @@ test("committed artifacts render the complete causal demo trace", async () => {
         diagnosis: "unknown_rejection_high",
         intervention: "broad_discovery_with_targeted_followup",
         before: 0.5,
-        after: 0.727,
-        delta: 0.227,
-        decision: "KEEP",
+        after: 0.5,
+        delta: 0,
+        decision: "REJECT",
       },
     ],
   );
   assert.equal(model.trials[0].nextObservation.count, 11);
-  assert.equal(model.trials[1].result.precision, 0.8);
-  assert.deepEqual(model.trials[1].result.falsePositives, ["Apollo 10"]);
+  assert.equal(model.trials[1].result.precision, 1);
+  assert.deepEqual(model.trials[1].result.falsePositives, []);
   assert.deepEqual(model.freeze.policy, development.learnedPolicy);
   assert.equal(model.freeze.status, "frozen");
+  assert.equal(model.freeze.baselineRetained, true);
   assert.equal(model.unseen.baseline.f1, 0.4);
-  assert.equal(model.unseen.learned.f1, 0.75);
-  assert.equal(model.unseen.learned.precision, 0.6);
-  assert.deepEqual(model.unseen.learned.falsePositives, ["Apollo 12", "Apollo 10"]);
+  assert.equal(model.unseen.learned.f1, 0.4);
+  assert.equal(model.unseen.learned.precision, 0.5);
+  assert.deepEqual(model.unseen.learned.falsePositives, ["Apollo 11"]);
   assert.equal(model.unseen.learned.policy, model.freeze.policy.name);
-  assert.equal(model.unseen.delta, 0.35);
+  assert.equal(model.unseen.delta, 0);
   assert.equal(model.unseen.exactPolicyTransferred, true);
 
   const markup = renderDemo(model);
@@ -107,7 +108,7 @@ test("committed artifacts render the complete causal demo trace", async () => {
     "00 / BASELINE",
     "01 / EXPERIMENT",
     "02 / EXPERIMENT",
-    "03 / LEARNED POLICY",
+    "03 / BASELINE RETAINED",
     "04 / UNSEEN TRANSFER",
   ];
   let priorIndex = -1;
@@ -127,19 +128,16 @@ test("committed artifacts render the complete causal demo trace", async () => {
     "11 unknownRejected candidates",
     "unknown_rejection_high",
     "broad_discovery_with_targeted_followup",
-    "0.727",
-    "+0.227",
-    "KEEP",
+    "+0.000",
+    "BASELINE RETAINED",
+    "No policy change learned",
     "POLICY FREEZE BOUNDARY",
     "NO RE-OPTIMIZATION",
     "0.400",
-    "0.750",
-    "+0.350",
     "QUALITATIVE SANITY CHECK",
     "RESULT SET</span>Apollo 17 · Apollo 15",
-    "PRECISION <strong>0.800</strong>",
-    "FALSE POSITIVES <strong>Apollo 10</strong>",
-    "P 0.600 · FP Apollo 12 · Apollo 10",
+    "P 0.500 · FP Apollo 11",
+    "Does the retained baseline travel unchanged?",
   ]) {
     assert.match(markup, new RegExp(requiredText.replace(/[+]/g, "\\+")));
   }

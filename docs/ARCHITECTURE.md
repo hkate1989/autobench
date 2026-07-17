@@ -21,9 +21,9 @@ Current module boundaries are deliberately small:
 
 - `src/core.js`: exact-set evaluation and the observation-dependent optimizer loop
 - `src/scientist.js`: deterministic diagnosis, hypothesis, and bounded intervention selection
-- `src/policies.js`: baseline plus the bounded intervention catalog
+- `src/policies.js`: baseline plus the bounded intervention catalog; verification is candidate-bound to one result and emits exact ranked evidence provenance
 - `src/cli.js`: development-to-freeze-to-unseen orchestration and artifact writing
-- `data/experiments/task-a.json`: development scientific trace
+- `data/experiments/task-a.json`: development scientific trace, including per-candidate verification verdicts
 - `data/experiments/task-b.json`: explicit freeze boundary and unseen transfer result
 - `src/server.js`: static files and read-only artifact routes
 - `public/app.js`: pure artifact-to-presentation mapping and replay rendering; no experiment logic

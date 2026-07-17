@@ -1,5 +1,7 @@
 # Failure-Driven Research Agent R&D Loop — P0
 
+> **Evidence-integrity re-baseline (2026-07-16):** This document records the completed P0 implementation and its pre-hardening phenomenon. The current authoritative replay is defined in `plans/evidence-semantics-hardening.md` and `docs/EVALUATION.md`. Candidate-bound verification changes Experiment 2 from `0.727 KEEP` to `0.500 REJECT`; the optimizer therefore retains `direct_search`, and real unseen transfer is `0.400 → 0.400`. Historical values below must not be presented as current evidence.
+
 ## Goal
 
 Make the existing AutoBench vertical slice visibly operate as an automated R&D loop for research agents:
@@ -56,7 +58,9 @@ qualitative transfer delta +0.350
 
 P0 should expose and automate this phenomenon before expanding the benchmark or generalizing the infrastructure.
 
-## Current State
+## Historical Pre-Hardening State
+
+The following section records the state at P0 completion. It is not the current evidence baseline; see the re-baseline notice above.
 
 - The project is a dependency-free Node.js 20 vertical slice. `npm test`, the development replay, and the unseen-task replay pass without network or model access.
 - `src/tasks.js` contains two fixed exhaustive-search tasks with exact mission-set ground truth:
@@ -73,7 +77,7 @@ P0 should expose and automate this phenomenon before expanding the benchmark or 
 - The single-screen replay console now renders the committed causal trace in presentation order: baseline failure, red rejected hypothesis, revised observation, green kept hypothesis, exact frozen descriptor, no-reoptimization gate, and qualitative unseen comparison.
 - `docs/EVALUATION.md`, the current-implementation note in `docs/ARCHITECTURE.md`, `TASKS.md`, and `README.md` now identify the failure-driven P0 loop and its narrow transfer claim. The older generic-platform material remains explicitly labeled historical context rather than being refactored during the demo milestone.
 
-## Target State
+## Historical P0 Target State
 
 `AUTOBENCH_REPLAY=1 npm run experiment` performs one bounded scientific run without network access or an API key:
 
@@ -463,6 +467,7 @@ Exit criteria:
 - 2026-07-16: Implement Milestone 4 entirely in the existing static frontend. The UI reads `task-a.json` and `task-b.json` through existing routes, builds a pure presentation model, and never duplicates evaluation, Scientist, optimizer, or transfer logic.
 - 2026-07-16: Keep replay as the default demo mode. Optional regeneration uses the existing `AUTOBENCH_REPLAY=1 npm run experiment` command followed by a page refresh; no workflow-trigger endpoint or new backend service was added.
 - 2026-07-16: Use a compact three-stage development row followed by the frozen-policy/unseen-transfer row so the complete causal story fits a 1440×900 projection frame while collapsing to a vertical flow on narrower screens.
+- 2026-07-16: Retire the pre-hardening `0.727 KEEP` / `0.750` transfer phenomenon after audit proved that candidate identity and qualifying keywords could come from different results. Auditable evidence takes precedence over demo score preservation.
 
 ## Discoveries
 
@@ -486,6 +491,8 @@ Exit criteria:
 - The existing artifact schema already contained every field needed for the presentation. Milestone 4 required no core, policy, evaluator, workflow, server-route, or experiment-schema change.
 - Focused presentation tests cover the committed causal trace, retained baseline, failed trial, failed transfer, frozen-policy linkage, and no-store replay loading. The complete suite now passes 46 tests.
 - Headless browser inspection at 1600×1000 and 1440×900 confirmed that the real replay fits in one projection frame with distinct REJECT/KEEP treatments and an explicit no-reoptimization boundary. All five existing HTTP routes returned `200` with their expected content types.
+- Post-P0 evidence audit found cross-result leakage in targeted verification. Per-result binding removes Apollo 10 from development and Apollo 12/Apollo 10 from standalone unseen predictions, but also removes unsupported Apollo 17/Apollo 16 development verdicts.
+- The audited development trace is now `0.500 → 0.000 REJECT → 0.500 REJECT`; the measured tie retains `direct_search`. The real frozen transfer is consequently `0.400 → 0.400`, even though the corrected targeted policy scores `1.000` in a separate unseen-only diagnostic.
 
 ## Progress
 
@@ -497,3 +504,4 @@ Exit criteria:
 - [x] Milestones 1–2 final validation complete: full test suite and replay-backed development optimization passing.
 - [x] Milestone 3 complete: optimizer-returned policy freeze and unseen transfer boundary implemented, 40 tests passing, and the single-command replay reproducing the complete causal result.
 - [x] Milestone 4 complete: replay-first scientific-trace console implemented, 46 tests passing, all demo routes healthy, and the full causal story verified at projection size.
+- [x] Post-P0 evidence re-baseline recorded; current claims defer to the candidate-bound hardening plan and evaluation specification.

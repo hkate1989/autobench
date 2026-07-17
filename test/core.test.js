@@ -6,12 +6,12 @@ import { AutoBenchOptimizer, Environment } from "../src/core.js";
 const task = { id: "t", groundTruth: ["A", "B"] };
 const search = {};
 
-const policy = (name, predictions, unknowns = [], calls = []) => ({
+const policy = (name, predictions, unknowns = [], calls = [], verificationVerdicts = []) => ({
   name,
   async run() {
     calls.push(name);
     if (predictions instanceof Error) throw predictions;
-    return { predictions, unknowns, queries: [name] };
+    return { predictions, unknowns, queries: [name], verificationVerdicts };
   },
 });
 
@@ -21,6 +21,8 @@ const policySet = ({
   broadUnknowns = ["A", "B"],
   targeted = ["A", "B"],
   targetedUnknowns = [],
+  broadVerdicts = [],
+  targetedVerdicts = [],
   calls = [],
 } = {}) => ({
   direct_search: policy("direct_search", baseline, [], calls),
@@ -29,12 +31,14 @@ const policySet = ({
     broad,
     broadUnknowns,
     calls,
+    broadVerdicts,
   ),
   broad_discovery_with_targeted_followup: policy(
     "broad_discovery_with_targeted_followup",
     targeted,
     targetedUnknowns,
     calls,
+    targetedVerdicts,
   ),
 });
 
@@ -49,6 +53,34 @@ test("environment reports precision, recall, and omissions", async () => {
   const result = await new Environment({ task, search }).evaluate(policy("p", ["A", "X"]));
   assert.deepEqual(result.metrics, { precision: 0.5, recall: 0.5, f1: 0.5 });
   assert.deepEqual(result.failureAnalysis.candidateOmission, ["B"]);
+});
+
+test("environment and scientific trials preserve exact verification verdict evidence", async () => {
+  const verificationVerdicts = [
+    {
+      candidate: "B",
+      query: "verify B",
+      searchLimit: 5,
+      verdict: "accepted",
+      reasonCode: "candidate_bound_evidence_found",
+      candidatePage: { rank: 1, title: "B", snippet: "B landed." },
+      candidateBoundEvidence: { rank: 1, title: "B", snippet: "B landed." },
+    },
+  ];
+  const policies = policySet({
+    broad: ["A", "B"],
+    broadUnknowns: [],
+    broadVerdicts: verificationVerdicts,
+  });
+
+  const evaluated = await new Environment({ task, search }).evaluate(
+    policies.broad_discovery_then_verify,
+  );
+  assert.deepEqual(evaluated.verificationVerdicts, verificationVerdicts);
+
+  const result = await optimizer(policies, { maxTrials: 1 }).optimize();
+  assert.equal(result.trials[0].decision, "KEEP");
+  assert.deepEqual(result.trials[0].experiment.verificationVerdicts, verificationVerdicts);
 });
 
 test("optimizer rejects broad, learns from that observation, then keeps targeted", async () => {

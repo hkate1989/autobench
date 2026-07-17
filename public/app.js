@@ -264,7 +264,7 @@ const renderFrozenPolicy = freeze => `
     </dl>
   </article>`;
 
-const renderUnseen = unseen => {
+const renderUnseen = (unseen, baselineRetained) => {
   if (unseen.status === "failed") {
     return `
       <article class="unseen-card transfer-failed">
@@ -287,7 +287,7 @@ const renderUnseen = unseen => {
       <div class="unseen-heading">
         <div>
           <p class="field-label">SAME-FAMILY TASK</p>
-          <h2>Does the learned policy travel?</h2>
+          <h2>${baselineRetained ? "Does the retained baseline travel unchanged?" : "Does the learned policy travel?"}</h2>
         </div>
         <strong class="transfer-delta">${signed(unseen.delta)}</strong>
       </div>
@@ -299,7 +299,7 @@ const renderUnseen = unseen => {
         </div>
         <span class="comparison-arrow" aria-hidden="true">→</span>
         <div class="comparison-result transferred-result">
-          <span>FROZEN POLICY</span>
+          <span>${baselineRetained ? "FROZEN RETAINED POLICY" : "FROZEN POLICY"}</span>
           <strong>${score(unseen.learned.f1)}</strong>
           <small>${escapeHtml(unseen.learned.policy)} · SET ${escapeHtml(unseen.learned.predictions.join(" · ") || "None")} · P ${score(unseen.learned.precision)} · FP ${escapeHtml(unseen.learned.falsePositives.join(" · ") || "None")}</small>
         </div>
@@ -341,7 +341,7 @@ export function renderDemo(model) {
       </div>
     </section>
 
-    <section class="transfer-section" aria-label="Frozen learned policy and unseen transfer">
+    <section class="transfer-section" aria-label="Frozen policy and unseen transfer">
       ${renderFrozenPolicy(model.freeze)}
       <div class="freeze-gate">
         <span class="gate-line" aria-hidden="true"></span>
@@ -350,7 +350,7 @@ export function renderDemo(model) {
         <span>EXACT DESCRIPTOR</span>
         <span>NO RE-OPTIMIZATION</span>
       </div>
-      ${renderUnseen(model.unseen)}
+      ${renderUnseen(model.unseen, model.freeze.baselineRetained)}
     </section>`;
 }
 

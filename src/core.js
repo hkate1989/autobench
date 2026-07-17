@@ -68,6 +68,13 @@ export class Environment {
       taskId: this.task.id,
       policy: policy.name,
       predictions: predicted,
+      verificationVerdicts: (run.verificationVerdicts ?? []).map(verdict => ({
+        ...verdict,
+        candidatePage: verdict.candidatePage ? { ...verdict.candidatePage } : null,
+        candidateBoundEvidence: verdict.candidateBoundEvidence
+          ? { ...verdict.candidateBoundEvidence }
+          : null,
+      })),
       metrics: {
         precision: round(precision),
         recall: round(recall),

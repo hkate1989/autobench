@@ -6,6 +6,7 @@
       "Apollo 17",
       "Apollo 15"
     ],
+    "verificationVerdicts": [],
     "metrics": {
       "precision": 1,
       "recall": 0.333,
@@ -73,6 +74,107 @@
         "taskId": "apollo_moon_landings",
         "policy": "broad_discovery_then_verify",
         "predictions": [],
+        "verificationVerdicts": [
+          {
+            "candidate": "Apollo 17",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 16",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 13",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 12",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 11",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 10",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 7",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 15",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 14",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 8",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 9",
+            "query": "\"Which Apollo missions successfully landed astronauts on the Moon?\"",
+            "searchLimit": 20,
+            "verdict": "rejected",
+            "reasonCode": "verification_results_empty",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          }
+        ],
         "metrics": {
           "precision": 0,
           "recall": 0,
@@ -177,29 +279,158 @@
         "taskId": "apollo_moon_landings",
         "policy": "broad_discovery_with_targeted_followup",
         "predictions": [
-          "Apollo 17",
-          "Apollo 16",
-          "Apollo 10",
           "Apollo 15",
           "Apollo 14"
         ],
+        "verificationVerdicts": [
+          {
+            "candidate": "Apollo 17",
+            "query": "\"Apollo 17\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_bound_evidence_missing",
+            "candidatePage": {
+              "rank": 1,
+              "title": "Apollo 17",
+              "snippet": "when assigned to  Apollo   17 , had been selected as part of  the  fifth group of  astronauts  in 1966, and had been a lieutenant commander in  the  United States"
+            },
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 16",
+            "query": "\"Apollo 16\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_bound_evidence_missing",
+            "candidatePage": {
+              "rank": 2,
+              "title": "Apollo 16",
+              "snippet": "colonel in  the  Air Force, Duke was 36 years old at  the  time of  Apollo   16 , which made him  the  youngest of  the  twelve  astronauts  who walked  on   the   Moon  during"
+            },
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 13",
+            "query": "\"Apollo 13\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 12",
+            "query": "\"Apollo 12\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 11",
+            "query": "\"Apollo 11\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 10",
+            "query": "\"Apollo 10\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_bound_evidence_missing",
+            "candidatePage": {
+              "rank": 5,
+              "title": "Apollo 10",
+              "snippet": " Apollo   10  (May 18–26, 1969) was  the  fourth human spaceflight in  the  United States&#039; Apollo program and  the  second to orbit  the   Moon . NASA,  the  mission&#039;s"
+            },
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 7",
+            "query": "\"Apollo 7\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 15",
+            "query": "\"Apollo 15\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "accepted",
+            "reasonCode": "candidate_bound_evidence_found",
+            "candidatePage": {
+              "rank": 2,
+              "title": "Apollo 15",
+              "snippet": " Apollo   15  (July 26 – August 7, 1971) was  the  ninth crewed mission in  the  Apollo program and  the  fourth  Moon  landing. It was  the  first J mission, with"
+            },
+            "candidateBoundEvidence": {
+              "rank": 2,
+              "title": "Apollo 15",
+              "snippet": " Apollo   15  (July 26 – August 7, 1971) was  the  ninth crewed mission in  the  Apollo program and  the  fourth  Moon  landing. It was  the  first J mission, with"
+            }
+          },
+          {
+            "candidate": "Apollo 14",
+            "query": "\"Apollo 14\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "accepted",
+            "reasonCode": "candidate_bound_evidence_found",
+            "candidatePage": {
+              "rank": 1,
+              "title": "Apollo 14",
+              "snippet": "47, was  the  oldest U.S.  astronaut  to fly when he made his trip aboard  Apollo   14 , and he is  the  oldest person to walk  on   the   Moon .  Apollo   14 &#039;s Command"
+            },
+            "candidateBoundEvidence": {
+              "rank": 2,
+              "title": "List of Apollo astronauts",
+              "snippet": "to flight status and commanded  Apollo   14 ,  the  third  successful   Moon  landing mission. All of these  astronauts  flew  on  Gemini, and except for White, each"
+            }
+          },
+          {
+            "candidate": "Apollo 8",
+            "query": "\"Apollo 8\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          },
+          {
+            "candidate": "Apollo 9",
+            "query": "\"Apollo 9\" successfully landed astronauts on the Moon?",
+            "searchLimit": 5,
+            "verdict": "rejected",
+            "reasonCode": "candidate_page_missing",
+            "candidatePage": null,
+            "candidateBoundEvidence": null
+          }
+        ],
         "metrics": {
-          "precision": 0.8,
-          "recall": 0.667,
-          "f1": 0.727
+          "precision": 1,
+          "recall": 0.333,
+          "f1": 0.5
         },
         "failureAnalysis": {
           "candidateOmission": [
             "Apollo 11",
-            "Apollo 12"
+            "Apollo 12",
+            "Apollo 16",
+            "Apollo 17"
           ],
-          "falsePositives": [
-            "Apollo 10"
-          ],
+          "falsePositives": [],
           "unknownRejected": [
+            "Apollo 17",
+            "Apollo 16",
             "Apollo 13",
             "Apollo 12",
             "Apollo 11",
+            "Apollo 10",
             "Apollo 7",
             "Apollo 8",
             "Apollo 9"
@@ -221,20 +452,20 @@
           ]
         }
       },
-      "afterScore": 0.727,
-      "delta": 0.227,
-      "decision": "KEEP",
-      "decisionReason": "after F1 0.727 exceeded incumbent F1 0.500"
+      "afterScore": 0.5,
+      "delta": 0,
+      "decision": "REJECT",
+      "decisionReason": "after F1 0.500 did not exceed incumbent F1 0.500"
     }
   ],
   "learnedPolicy": {
-    "name": "broad_discovery_with_targeted_followup",
-    "queryBudget": 20,
-    "unknownHandling": "targeted_followup",
-    "learnedFromIteration": 2,
-    "status": "learned"
+    "name": "direct_search",
+    "queryBudget": 1,
+    "unknownHandling": "reject",
+    "learnedFromIteration": null,
+    "status": "baseline_retained"
   },
-  "stopReason": "first_improvement_kept",
-  "selectedIntervention": "broad_discovery_with_targeted_followup",
-  "decision": "KEEP"
+  "stopReason": "max_trials_reached",
+  "selectedIntervention": null,
+  "decision": "REJECT"
 }

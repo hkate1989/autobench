@@ -2,12 +2,20 @@
 
 ## Active P0 milestone status
 
-The active execution source is `plans/p0-end-to-end.md`.
+The completed P0 record is `plans/p0-end-to-end.md`; the completed pre-milestone hardening record is `plans/evidence-semantics-hardening.md`.
 
 - [x] Milestone 1: preserve the replay phenomenon
 - [x] Milestone 2: automate diagnosis → hypothesis → experiment → KEEP/REJECT
 - [x] Milestone 3: freeze the optimizer-returned policy and transfer it unchanged
 - [x] Milestone 4: make the causal R&D loop visually obvious
+
+## Evidence integrity status
+
+- [x] Bind candidate identity and qualifying verification evidence to one individual result.
+- [x] Persist exact ranked result provenance for every verification verdict.
+- [x] Re-run development optimization and unseen transfer without preserving historical F1.
+
+Current audited replay: `0.500 → 0.000 REJECT → 0.500 REJECT`; `direct_search` is retained and frozen, producing unseen `0.400 → 0.400`. The former development `0.727` KEEP and unseen `0.750` transfer depended on cross-result evidence leakage and are no longer accepted evidence. A future milestone must establish a new candidate-bound development improvement before restoring the stronger product claim.
 
 The checklist below predates the failure-driven R&D-loop plan and is retained as historical planning context. The completed P0 status above and `plans/p0-end-to-end.md` are authoritative.
 
