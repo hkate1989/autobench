@@ -412,6 +412,7 @@ Exit criteria:
 
 ### Integration and phenomenon tests
 
+- Prove that the experimental trajectory is observation-dependent rather than a fixed policy sequence, using counterfactual branch tests: when the baseline has no omissions, the Scientist must not propose broad discovery; when the broad experiment has no `unknownRejected`, the Scientist must not automatically propose targeted follow-up; and when Experiment 1 unexpectedly improves on the incumbent, the loop must immediately `KEEP`, freeze that policy, and never run Experiment 2.
 - Committed-cache replay reproduces `0.500 → 0.000 REJECT → 0.727 KEEP` on the development task.
 - The second diagnosis is derived from the rejected experiment while the comparison incumbent remains `direct_search`.
 - Trial records contain diagnosis, hypothesis, intervention, before score, after score, delta, decision, and decision reason.
