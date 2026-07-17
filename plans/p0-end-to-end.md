@@ -1,198 +1,331 @@
-# Smallest End-to-End P0
+# Seven-Hour End-to-End P0
 
 ## Goal
 
-Deliver one reproducible AutoBench command and one replayable UI that load a fixed versioned research benchmark, evaluate a baseline and a small declared set of candidate configurations on the development split, select the winner by the documented quality metric, compare baseline and winner once on a held-out split, persist the complete experiment history, and show the before/after result with one inspectable answer comparison.
+Turn the existing Node.js vertical slice into one reproducible, demoable AutoBench loop without replacing its working architecture:
+
+benchmark → baseline → 3 bounded candidate strategies → deterministic evaluation → winner selection → held-out sanity check → one-screen before/after report
+
+The required command remains AUTOBENCH_REPLAY=1 npm run experiment. It must use committed MediaWiki caches, persist one complete experiment artifact, and give the UI everything needed to explain which search strategy won and why.
 
 ## Why This Matters
 
-The repository already demonstrates that a targeted Wikipedia search policy can improve Apollo-list F1, but it cannot yet support the product claim in `AGENTS.md`: the benchmark, configuration, evaluator, experiment record, selection rule, and UI are not connected through one reproducible P0 loop. This plan closes only those gaps needed for a defensible three-minute demo and retains cached replay so the demo survives network or model failure.
+The current repository already proves most of the technical path: fixed Apollo tasks, cached Wikipedia search, a baseline, two interventions, deterministic F1 scoring, an optimizer, persisted JSON, and a replay UI. P0 should make that loop complete and reproducible, not turn it into a generalized research-agent framework. The visible product claim is automated strategy optimization against a fixed benchmark.
 
 ## Current State
 
-- The project is dependency-free Node.js 20 with commands in `package.json`; `npm test`, replay validation, optimization, and generalization currently pass.
-- `src/tasks.js` hard-codes two Apollo tasks and their ground truth. One acts as the optimization task and one as an unseen same-family task, but there is no benchmark loader, schema validation, benchmark version, rubric, or explicit split field.
-- `src/policies.js` contains three named policy objects. They are useful bounded candidates, but there is no serializable `AgentConfig`, explicit search-space declaration, prompt version, model identifier, or proof that mutations are constrained to declared values.
-- `src/search.js` provides real MediaWiki search with committed JSON caches and replay mode. It should remain the external research adapter and deterministic fallback path.
-- `src/core.js` combines agent execution, exact-set F1 evaluation, failure diagnosis, and optimization. Results omit answer text, evidence/source records, timestamps, latency, cost, status, and structured errors.
-- `src/scientist.js` can propose only two interventions, but it is not wired into the optimizer. It is optional and unnecessary for P0.
-- `src/cli.js` uses separate `experiment` and `generalize` commands and overwrites two special-purpose JSON files. There is no single full-loop command or reloadable collection of homogeneous experiment records.
-- `public/` replays those two files and shows F1 cards. It does not show a declared config, experiment history table, overall score/delta, dimension breakdown, exact config diff, or baseline-versus-winner answer.
-- `test/core.test.js` covers only F1/error analysis and a two-step optimizer path. The minimum tests required by `AGENTS.md` are otherwise absent.
-- `TASKS.md` has no completed P0 boxes even though parts of the current slice are reusable.
+- The repository is tracked on `main`. This plan currently has uncommitted documentation edits; implementation must preserve them and any later user changes.
+- package.json defines a dependency-free Node.js 20 project. Existing tests and replay commands pass.
+- src/tasks.js contains the two fixed Apollo tasks already used by the demo:
+  - apollo_moon_landings is the development benchmark used for strategy selection.
+  - apollo_lunar_roving_vehicle is the single held-out example.
+- src/policies.js contains the direct-search baseline and two bounded candidate strategies.
+- src/search.js already provides live MediaWiki search plus deterministic cache replay. Existing targeted-follow-up queries for both tasks are committed.
+- src/core.js already owns policy evaluation, precision/recall/F1 calculation, failure analysis, and optimizer decisions.
+- src/cli.js already runs and persists development and held-out experiments, but through separate commands and two special-purpose artifacts.
+- public/ and src/server.js already render a one-screen replay, but the page does not show a serializable strategy configuration, all three candidates, exact config differences, reproducibility metadata, or structured evidence.
+- src/scientist.js is optional and is not connected to the current optimizer.
+- docs/EVALUATION.md still describes a generic five-dimension, 0–100 weighted evaluator and a +3-point threshold. That conflicts with this P0 plan's task-specific F1 evaluator and must be reconciled before evaluator implementation begins.
 
 ## Target State
 
-`AUTOBENCH_REPLAY=1 npm run experiment` runs the complete offline P0 flow against committed search caches and writes one self-contained run artifact. The artifact contains a baseline development experiment, at least three candidate development experiments evaluated on identical examples and evaluator version, the selected configuration, and a held-out baseline/winner comparison. Each experiment records config, benchmark/model/prompt/evaluator versions, timestamp, aggregate and per-example dimension scores, answer/evidence/sources, latency, estimated cost when known, status, and structured errors. `npm run demo` loads the latest artifact and makes the benchmark-specific improvement legible on one screen. Live MediaWiki access remains an opt-in cache-filling path, not a requirement for tests or the demo.
+One replay command evaluates the baseline and exactly three declared candidate strategies on the existing development task, selects the highest-scoring eligible candidate using deterministic task correctness, then evaluates the baseline and selected candidate on the existing held-out task. It writes a self-contained run artifact and a latest artifact consumed by the UI.
 
-The smallest benchmark is five Apollo research questions in one versioned JSON file: four development examples and one held-out example. This is enough to exercise aggregation and prevent direct optimization on the held-out answer while staying within the 5–20 example guidance. The product claim remains explicitly limited to this benchmark and task family.
+The run artifact records:
+
+- benchmark and evaluator versions
+- backend identifier for MediaWiki search
+- model: null
+- baseline and candidate strategy configs
+- development predictions, evidence, primary score, diagnostic metrics, latency, cost, status, and errors
+- winner eligibility, ranking, selection reason, and exact config diff
+- held-out baseline and winner results
+
+The UI presents the development result as benchmark-specific optimization. The one held-out example is explicitly a qualitative sanity check, not evidence of statistical or cross-domain generalization.
 
 ## Non-Goals
 
-- Migrating the working Node implementation to Python or introducing a framework.
-- Calling an LLM in the required path; `LLMScientist` remains optional and out of the P0 loop.
-- General-purpose benchmark authoring, evaluator plugins, databases, authentication, background workers, or parallel execution.
-- Statistical significance, cross-domain generalization, sophisticated optimization, or automatic code/prompt generation.
-- Arbitrary configurations beyond the declared curated search space.
-- Live fetching during unit or integration tests.
+- Natural-language answer synthesis or a new answer-generation pipeline.
+- A five-dimension weighted evaluator or an overall quality score unrelated to the existing task metric.
+- New benchmark questions, additional cache collection, or a 5–20 item benchmark during this build.
+- Migrating to Python, adding dependencies, or introducing ResearchAgent, Evaluator, ExperimentRunner, or ExperimentStore class hierarchies.
+- General-purpose config generation, exhaustive grids, model-proposed candidates, or wiring LLMScientist into P0.
+- Statistical significance or universal-agent-improvement claims.
+- A generic dashboard, per-question navigation, cost accounting beyond the known zero-cost backend value, or database persistence.
 
 ## Design
 
-### Data flow and module boundaries
+### Fixed visible flow
 
-1. Add `data/benchmarks/apollo-v1.json` containing benchmark metadata and five validated examples with `id`, `question`, `rubric`, `split`, task-specific search inputs, and expected facts.
-2. Add `src/benchmark.js` to load and validate the JSON and return immutable `development` and `test` example lists plus `benchmarkVersion`. Invalid IDs, splits, rubrics, expected facts, or search fields fail before a run begins.
-3. Add `src/config.js` with a serializable baseline `AgentConfig`, three curated candidate configs, and an explicit `SEARCH_SPACE`. Keep the useful current strategies as config-selected behavior: direct search, broad discovery/verification, and targeted follow-up. Reject undeclared fields and values.
-4. Refactor policy execution behind `ResearchAgent.run(example, config)` in `src/agent.js`. Reuse `WikipediaSearch`; return an `AgentResult` containing synthesized answer text, predictions, cited evidence, normalized source records, query metadata, latency, estimated cost (`0` for MediaWiki-only runs), and structured errors. Keep prompt/strategy version constants named and persisted.
-5. Add `src/evaluator.js` with evaluator version `apollo-deterministic-v1`. Compute the five dimensions required by `docs/EVALUATION.md` on a 0–100 scale and the fixed 35/25/20/10/10 weighted overall score. For this narrow factual-list benchmark, correctness/completeness derive from expected-fact precision/recall, citation support from claim-to-evidence coverage, source quality from successful MediaWiki source records and diversity, and instruction following from required answer/citation structure. Store strengths, weaknesses, and critical errors. Keep this deterministic and document that it is benchmark-specific, avoiding a fake claim of general semantic evaluation.
-6. Split orchestration into `src/experiments.js` and `src/optimizer.js`. The runner evaluates one config over an explicit split, records failures rather than silently scoring them as ordinary zeros, aggregates mean/median/minimum overall, dimension means, failure rate, mean latency, and estimated cost, then persists through `src/store.js`. The optimizer evaluates the baseline and every curated candidate on the same development examples, ranks by mean overall, failure rate, latency, then cost, and labels a winner `meaningfully_improved` only at a +3 point delta. It evaluates only the selected config and baseline on the held-out split after selection.
-7. Make `src/cli.js experiment` the single orchestration entry point and write `data/experiments/<run-id>.json` plus a small deterministic `data/experiments/latest.json` pointer/copy for the UI. Preserve a separate cache-fill/validation command if useful, but remove the need to manually chain `experiment` and `generalize` for the demo.
-8. Update `src/server.js` and `public/` to render the latest complete artifact: baseline/best/test delta summary, development experiment table, winning config and diff, dimension deltas, failures, and one baseline/winner held-out answer with citations. The page must visibly label development selection versus held-out reporting and say “best observed candidate” when the +3 threshold is not met.
+1. Use apollo_moon_landings as the only development example.
+2. Evaluate direct_search as the baseline.
+3. Evaluate exactly three candidate strategies declared in source order.
+4. Score every completed run with deterministic task-correctness F1.
+5. Exclude any candidate with a failed development example from winner selection while retaining its full failed record.
+6. Select the best eligible candidate and compare its development score with the baseline.
+7. Only after selection, run the baseline and selected candidate on apollo_lunar_roving_vehicle.
+8. Persist and render the complete before/after record.
 
-### Important interfaces
+### Evaluator
+
+The P0 evaluator remains inside the existing Environment evaluation path in src/core.js. No evaluator class or weighted dimension framework is added.
+
+Primary optimization metric:
+
+- taskCorrectnessF1: the existing set-based F1 over predicted Apollo missions and fixed ground truth.
+
+Useful diagnostics:
+
+- precision: fraction of predicted missions that are correct.
+- coverage: recall under a demo-friendly name; fraction of expected missions found.
+- evidenceSupport: fraction of predictions with at least one structured evidence record that contains the prediction and satisfies the task verification rule.
+- queryCount, latencyMs, and estimatedCost.
+
+There is no synthesized answer, no nominal correctness/completeness/citation/source/instruction score set, and no weighted overall score. docs/EVALUATION.md is the source of truth for these P0 semantics.
+
+### Strategy set and configuration
+
+Keep the existing policy objects. Add a small serializable config field to each policy rather than creating a separate AgentConfig subsystem. The bounded strategy set is:
+
+| Role | Strategy | Existing work |
+|---|---|---|
+| Baseline | direct_search | Reuse unchanged behavior |
+| Candidate 1 | broad_discovery_then_verify | Reuse existing behavior |
+| Candidate 2 | broad_discovery_with_targeted_followup | Reuse existing behavior |
+| Candidate 3 | broad_discovery_with_strict_targeted_followup | Add one stricter verification variant that reuses Candidate 2 queries and committed caches |
+
+Each config exposes only behavior needed for the demo. The exact four immutable config snapshots are the P0 search space; there is no generic combinatorial generator:
+
+| Strategy | queryBudget | discoveryMode | followUpMode | evidenceRule |
+|---|---:|---|---|---|
+| direct_search | 1 | direct | none | query-result mentions |
+| broad_discovery_then_verify | 2 | broad | batch | candidate and verification signal within the batch evidence window |
+| broad_discovery_with_targeted_followup | 20 | broad | per-candidate | candidate page exists and verification signal appears anywhere in that candidate query's results |
+| broad_discovery_with_strict_targeted_followup | 20 | broad | per-candidate | one result contains both candidate identity and verification signal |
+
+`queryBudget` is a hard upper bound, not a promise that every run issues that many queries. Config validation rejects duplicate strategy names, unknown fields, and runtime behavior that is not represented by one of these declared snapshots.
+
+The strict third candidate is deliberately one intervention away from Candidate 2: it requires the candidate identity and task verification signal to occur in the same search result. It may win or lose based on the deterministic evaluator; the winner is never hard-coded.
+
+### Minimal module changes
+
+| Existing module | P0 action |
+|---|---|
+| src/tasks.js | Minimally add benchmark version, explicit development/held-out labels, evaluator version, and lightweight startup validation around the two existing tasks. Do not move tasks to JSON or add more examples. |
+| src/policies.js | Preserve all current policy logic; attach serializable configs, expose the search snippets already used as structured evidence, and add only the strict third candidate. |
+| src/search.js | Keep unchanged unless a tiny read-only result-normalization helper is needed. Preserve cache keys, replay behavior, and live fallback. |
+| src/core.js | Extend Environment.evaluate records with evidence diagnostics, metadata, latency/status/errors, and candidate eligibility. Change AutoBenchOptimizer to evaluate all three candidates and rank eligible results instead of stopping at the first KEEP. |
+| src/cli.js | Make experiment orchestrate development optimization and the post-selection held-out sanity check in one command; persist one homogeneous run artifact plus latest.json. Retain existing commands when cheap for compatibility. |
+| src/server.js | Replace the two experiment API routes with one latest-run route while leaving static serving intact. |
+| public/app.js and public/index.html | Adapt the existing one-screen UI to the P0 priority order; do not build new screens or client state. |
+| public/styles.css | Reuse existing styling and add only styles required by the new cards/table/diff. |
+| src/scientist.js | Leave unchanged and unused. |
+| test/core.test.js | Extend the current tests rather than replacing the test setup; add another test file only if it materially improves readability. |
+
+No new runtime abstraction is planned. A tiny helper module is allowed only if implementation shows that keeping artifact validation or persistence in cli.js makes it untestable.
+
+### Structured policy result
+
+Preserve predictions as the output being optimized. Extend the existing policy result only with evidence:
+
+- predictions: unique mission identifiers
+- evidence: records containing prediction, query, result title, and snippet
+- unknowns: rejected candidate identifiers
+- queries: issued query strings
+
+Evidence is inspectable evaluator input, not a generated prose answer.
+
+The evaluator derives `evidenceSupport` only from these records. A prediction is supported when at least one evidence record has the same normalized prediction identifier and its individual `title + snippet` satisfies that strategy's declared evidence rule. Concatenating unrelated results must not create support. Empty predictions produce evidence support `0`, not `1` or an undefined value.
+
+### Runtime contracts
+
+Implementation may keep these as plain validated objects; the names below define the serialized contract rather than requiring new classes:
 
 ```js
-loadBenchmark(file) -> {
-  version,
-  development: BenchmarkExample[],
-  test: BenchmarkExample[]
-}
+Policy.run(task, search) -> Promise<{
+  predictions: string[],
+  evidence: { prediction: string, query: string, title: string, snippet: string }[],
+  unknowns: string[],
+  queries: string[]
+}>
 
-ResearchAgent.run(example, config) -> Promise<AgentResult>
+Environment.evaluate(policy) -> Promise<ExperimentRecord>
 
-Evaluator.evaluate(example, agentResult) -> EvaluationResult
-
-ExperimentRunner.run({ config, benchmarkVersion, split, examples })
-  -> Promise<ExperimentResult>
-
-Optimizer.optimize({ baselineConfig, candidateConfigs, development, test })
-  -> Promise<OptimizationRun>
-
-ExperimentStore.save(run) -> Promise<string>
-ExperimentStore.loadLatest() -> Promise<OptimizationRun>
+AutoBenchOptimizer.optimize() -> Promise<{
+  baseline: ExperimentRecord,
+  candidates: ExperimentRecord[],
+  selection: SelectionRecord
+}>
 ```
 
-Use plain objects plus explicit validation functions rather than adding a schema dependency. Public functions receive and return documented serializable shapes.
+`Environment.evaluate` catches policy/search execution errors and returns a failed experiment record. Declaration/validation errors remain fatal startup errors because running an invalid benchmark or search space would make the comparison untrustworthy.
 
-### State and persistence
+### Experiment artifact
 
-The top-level run artifact contains `runId`, `createdAt`, benchmark/evaluator versions, run status/errors, declared search space, development experiment IDs, selection decision/reason, and held-out comparison IDs. Each nested experiment contains the minimum reproducibility fields mandated by `AGENTS.md`, aggregate metrics, and per-example agent/evaluation records. JSON is sufficient for P0 and keeps cached fallback data inspectable and committable.
+The top-level artifact contains:
 
-Search-cache files remain separate immutable inputs. Replaying the same cache and code versions must reproduce scores; timestamps and measured latency may differ and are not ranking-stability assertions.
+- runId and createdAt
+- benchmarkVersion and evaluatorVersion
+- backend: wikipedia-mediawiki
+- model: null
+- promptVersion: null
+- status and errors
+- declared baseline and three candidate configs
+- development baseline and candidate experiment records
+- selected strategy, selection reason, score delta, and config diff
+- heldOutSanityCheck with baseline and selected-strategy records
+
+Each experiment record retains the current predictions, failure analysis, and queries while adding config, evidence, metrics, latencyMs, estimatedCost: 0, status, errors, and eligibleForSelection.
+
+Canonical status values are `completed`, `failed`, and, at the top-level only, `completed_with_errors`. Canonical structured errors contain `stage`, `name`, and `message`; stack traces are not persisted or rendered. A completed record has numeric metrics and no errors. A failed record has `metrics: null`, retains any partial queries/evidence that are safely available, has at least one error, and is never eligible for selection.
+
+Write a timestamped run file first, then atomically replace data/experiments/latest.json for the UI so the server cannot observe a partial JSON document. JSON remains sufficient; no database or generalized store is introduced. Search caches are immutable run inputs, not embedded copies; deterministic scores are reproducible while timestamps and measured latency may vary.
+
+### Winner selection and failures
+
+- Evaluate the baseline and all three candidates on identical development inputs with the same evaluator version.
+- A candidate is eligible only when every development example completed successfully. In this P0 there is one development example, so any failure makes it ineligible.
+- Failed examples receive status and structured errors, not a synthetic zero score.
+- Failed experiments remain in the persisted candidate list and UI table with eligibleForSelection: false.
+- Rank eligible candidates by taskCorrectnessF1, then evidenceSupport, then coverage, then lower query count, then stable declared order.
+- Report a strategy as improved only when its development taskCorrectnessF1 is strictly greater than the baseline. Otherwise label it best observed candidate and do not claim improvement.
+- The selected strategy is the highest-ranked eligible candidate even when it does not beat the baseline; `selection.outcome` distinguishes `improved`, `best_observed_no_improvement`, and `baseline_retained_no_eligible_candidate`. The baseline is used for the held-out comparison only in the last case.
+- Held-out results never affect selection.
+
+### Held-out interpretation
+
+The single apollo_lunar_roving_vehicle comparison is an inspectable qualitative sanity check. The UI shows baseline and winner predictions, omissions, false positives, and evidence so viewers can see what changed. It must not use language such as generalizes, statistically significant, or universally better.
 
 ### Error handling
 
-- Benchmark/config schema errors abort before any experiments are written.
-- A recoverable search/agent failure produces a failed per-example record with stage, error type, and message; aggregation reports failure rate and excludes missing quality scores from quality means while preventing a failed candidate from winning a complete candidate through the failure-rate tie-break/eligibility rule.
-- A whole experiment is `completed`, `completed_with_errors`, or `failed`; partial results remain visible.
-- Missing replay cache errors identify the example and query. Unit tests never make network calls.
-- Persistence uses a temporary file followed by rename so the UI does not read a partially written latest artifact.
+- Invalid benchmark metadata or duplicate/malformed configs fail before the loop starts.
+- Policy/search failures become structured experiment errors with stage, error type, and message.
+- Missing replay caches name the strategy and query.
+- The optimizer continues evaluating later candidates after one candidate fails.
+- If every candidate is ineligible, the baseline remains selected and the artifact/UI explain why.
+- A held-out failure does not revise the development winner; it produces a failed held-out record and a top-level `completed_with_errors` status.
+- Persistence failure is fatal and must not replace an existing valid latest.json.
+- Tests use fake search results or committed replay caches and never require network or model access.
 
 ## Milestones
 
-### Milestone 1 — Versioned benchmark, config, and research result
+### Milestone 1 — Freeze benchmark, configs, and structured evidence
 
-- [ ] Add the five-example Apollo v1 benchmark with four development and one held-out example, rubrics, expected facts, and search inputs.
-- [ ] Implement benchmark loading/validation and split access in `src/benchmark.js`.
-- [ ] Define the baseline, three curated candidates, allowed config values, model identifier (`mediawiki-search`), and named strategy/prompt versions in `src/config.js`.
-- [ ] Implement `ResearchAgent` around the existing cached Wikipedia adapter and policy behavior, returning answer, citations/evidence, sources, queries, latency, cost, and errors.
-- [ ] Add tests for valid/malformed benchmark loading, split isolation, config serialization/validation, agent result shape, and replay-cache failure visibility.
-
-Exit criteria:
-- One development example runs from a typed-by-contract config entirely in replay mode, and its complete serializable `AgentResult` includes inspectable evidence and reproducibility identifiers.
-
-### Milestone 2 — Deterministic evaluation and experiment persistence
-
-- [ ] Implement the versioned five-dimension deterministic evaluator and exact weighted overall score.
-- [ ] Implement aggregate metrics, explicitly handling failed examples.
-- [ ] Implement `ExperimentRunner` with progress logging and homogeneous experiment records.
-- [ ] Implement atomic JSON `ExperimentStore` save/load-latest behavior.
-- [ ] Add evaluator weighting/aggregation boundary tests, deterministic stored-output rescoring, failure-record tests, and experiment persistence round-trip tests.
+- [ ] Reconcile docs/EVALUATION.md with the P0 task-specific F1 metric, diagnostic definitions, strict failure eligibility, tie-breakers, outcome labels, and held-out sanity-check wording before evaluator code changes.
+- [ ] Add benchmarkVersion, evaluatorVersion, and explicit development/held-out metadata to the two tasks in src/tasks.js.
+- [ ] Add lightweight validation for the fixed task and strategy declarations.
+- [ ] Attach serializable config snapshots to the baseline and existing candidates.
+- [ ] Add broad_discovery_with_strict_targeted_followup as the third candidate using existing targeted queries and caches.
+- [ ] Return structured evidence from policies without creating natural-language answers.
+- [ ] Extend tests for fixed split metadata, config serialization, exactly three candidate configs, and evidence shape.
 
 Exit criteria:
-- The baseline runs across all development examples, saves a reloadable experiment, and every example exposes answer/evidence plus dimension-level and overall scores; malformed inputs and failures remain visible.
 
-### Milestone 3 — Bounded optimization and held-out comparison
+- Replay mode can execute the baseline and three declared candidates on Task A using existing caches, and every successful result contains predictions plus inspectable evidence.
 
-- [ ] Implement candidate generation solely from the declared curated search space, excluding duplicate baseline configs.
-- [ ] Evaluate baseline and at least three candidates on the identical development example IDs with the identical evaluator version.
-- [ ] Rank by documented primary score and tie-breakers, save the selection reason/config, and apply the +3 meaningful-improvement label.
-- [ ] After selection, run baseline and the selected config once on the held-out split without using held-out scores for selection.
-- [ ] Wire the full flow to `npm run experiment` and produce a single latest optimization artifact.
-- [ ] Add optimizer selection/tie-break/threshold tests and one fully mocked or replay-backed end-to-end optimization test that asserts split isolation and persisted history.
+### Milestone 2 — Deterministic scoring, failure eligibility, and ranking
 
-Exit criteria:
-- `AUTOBENCH_REPLAY=1 npm run experiment` produces baseline + three candidates + winner + held-out comparison in one inspectable artifact, with no live network or API key and no hard-coded winning selection.
-
-### Milestone 4 — One-screen report and demo hardening
-
-- [ ] Serve the latest complete optimization artifact rather than the two legacy special-case files.
-- [ ] Render baseline and best development scores, absolute delta and threshold label, experiment table, exact winning config/diff, dimension deltas, and statuses/errors.
-- [ ] Render one held-out baseline-versus-winner answer comparison with evidence/citations and clearly label it as held-out reporting.
-- [ ] Commit one known-good replay artifact and all required search caches as the API-failure fallback.
-- [ ] Update `README.md`, `docs/EVALUATION.md` where the benchmark-specific deterministic rubric needs clarification, and check completed P0 items in `TASKS.md` only after their exit criteria pass.
-- [ ] Run the clean replay optimization path, all tests, and the UI smoke test; record decisions/discoveries/progress in this plan.
+- [ ] Extend Environment.evaluate with taskCorrectnessF1, precision, coverage, evidenceSupport, latency, status, errors, backend, and model metadata.
+- [ ] Preserve failed results without assigning synthetic quality scores.
+- [ ] Change AutoBenchOptimizer to evaluate all three candidates and exclude any failed candidate from selection.
+- [ ] Implement deterministic ranking and exact baseline-to-winner config diff.
+- [ ] Add tests for metric calculation, evidence support, all-candidate evaluation, deterministic tie-breaking, failed-candidate exclusion, and no-improvement behavior.
 
 Exit criteria:
-- A new viewer can understand the baseline, multiple candidate experiments, selected config, benchmark-specific score change, dimension reasons, and a qualitative held-out comparison in under 30 seconds; the same page loads from committed cached output if external services fail.
+
+- One optimizer call returns the baseline, three visible candidate records, and a winner derived only from eligible development results.
+
+### Milestone 3 — One command, one artifact, held-out sanity check
+
+- [ ] Make npm run experiment run Task A optimization followed by Task B baseline-versus-winner evaluation.
+- [ ] Ensure Task B is never read by the optimizer or used in winner selection.
+- [ ] Persist the complete reproducibility fields and all failures in a timestamped JSON artifact and data/experiments/latest.json.
+- [ ] Make latest.json replacement atomic and preserve the previous valid latest artifact if serialization or persistence fails.
+- [ ] Keep backend set to wikipedia-mediawiki and model set to null throughout the artifact.
+- [ ] Add one mocked or replay-backed end-to-end test covering baseline, three candidates, winner selection, held-out ordering, and artifact reload.
+
+Exit criteria:
+
+- AUTOBENCH_REPLAY=1 npm run experiment completes without network or API keys and produces one inspectable artifact for the exact P0 flow.
+
+### Milestone 4 — Priority-ordered one-screen report and demo hardening
+
+- [ ] Point the existing server and UI at latest.json.
+- [ ] Show the baseline development score first.
+- [ ] Show all three candidate scores/statuses, including ineligible failures.
+- [ ] Show the winning strategy and exact configuration diff.
+- [ ] Show the held-out baseline-versus-winner structured predictions, omissions, false positives, and evidence as the inspectable example of what improved.
+- [ ] Keep metadata and secondary diagnostics available but visually subordinate.
+- [ ] Commit one known-good replay artifact, update README.md and TASKS.md, and record implementation discoveries/progress here.
+- [ ] Run all tests, the clean replay command, and a manual UI smoke check.
+
+Exit criteria:
+
+- In under 30 seconds, a viewer can identify the baseline score, compare three candidates, see the winning strategy/config change, and inspect the held-out before/after result without mistaking it for statistical generalization.
 
 ## Validation
 
-### Unit tests
+### Automated
 
-- Benchmark loading accepts Apollo v1, rejects malformed records, and never mixes development/test examples.
-- Configs round-trip through JSON and reject unknown keys or values outside `SEARCH_SPACE`.
-- Agent replay returns answer, sources/evidence, latency/cost, and structured failures.
-- Evaluator dimension weights produce the documented overall score and identical stored outputs rescore identically.
-- Aggregation reports mean/median/minimum, dimension means, failure rate, latency, and cost correctly, including all-failed input.
-- Store round-trips a complete experiment and does not expose partial writes.
-- Optimizer candidate generation is bounded, ranking uses the documented tie-breakers, and +3 labeling is correct.
+- Existing tests continue to pass.
+- Task metadata validation rejects invalid splits or duplicate strategy names.
+- All four configs round-trip through JSON.
+- Deterministic scoring reproduces precision, coverage, F1, and evidence support from stored outputs.
+- A failed candidate remains visible and cannot win even if other recorded fields are favorable.
+- The optimizer evaluates exactly three candidates and selects via the documented ordering.
+- Candidate order changes do not change ties except for the explicitly persisted declared-order index.
+- Failed runs have null quality metrics and structured errors; no display or aggregation path coerces them to zero.
+- A replay-backed or mocked full loop proves held-out execution happens only after development selection.
+- A held-out failure leaves development selection unchanged and marks the overall artifact completed_with_errors.
+- The persisted artifact reloads and contains backend: wikipedia-mediawiki and model: null.
+- A simulated write failure leaves the previous latest.json readable.
+- The server returns the latest artifact and static UI.
 
-### Integration tests
+### Manual demo
 
-- A fake search adapter drives one config through agent, evaluator, runner, and store without network access.
-- A mocked/replay-backed full optimization asserts identical development IDs/evaluator versions for baseline and candidates, no held-out evaluation before selection, at least three recorded candidates, and a selected config derived from ranking.
-- The server returns the latest valid artifact and static report assets.
-
-### Manual demo steps
-
-1. Run `npm test`.
-2. Run `AUTOBENCH_REPLAY=1 npm run experiment` from a clean checkout and inspect `data/experiments/latest.json` for all required metadata and visible errors.
-3. Run `npm run demo`, open the one-screen report, and verify the score summary, experiment table, config diff, dimension breakdown, and held-out answer comparison.
-4. Temporarily run with live access unavailable and confirm both experiment replay and the committed fallback report still work.
-5. Confirm the UI language does not claim universal improvement and uses “best observed candidate” if the development delta is below three points.
+1. Run npm test.
+2. Run AUTOBENCH_REPLAY=1 npm run experiment.
+3. Inspect data/experiments/latest.json for the baseline, three candidates, winner/config diff, failures, and held-out block.
+4. Run npm run demo and verify the UI follows the required priority order.
+5. Inspect the held-out predictions and evidence and confirm the copy calls it a qualitative sanity check.
+6. Confirm no API key or network access is required.
 
 ## Risks
 
-- The existing committed caches cover only two task queries; three new development examples will require carefully chosen Apollo questions and new cache fixtures before offline P0 can pass.
-- A deterministic evaluator can be gamed if dimensions merely duplicate exact-set F1. The dimension rules must be explicit and backed by evidence/source structure, while the UI must label the evaluator benchmark-specific.
-- With only four development examples and one held-out example, results are illustrative rather than statistically strong. The claim must remain scoped to Apollo v1.
-- Targeted follow-up currently admits false positives because snippets can mention verification phrases out of context. Evidence must be tied to each predicted claim or the citation-support metric will be misleading.
-- Measured latency varies between runs. Ranking stability should rely on quality/failure differences first; latency is only a tie-breaker.
-- Rewriting the working slice wholesale would jeopardize the demo. Each milestone must preserve replay tests and keep `npm run demo` runnable with the last known-good artifact.
+- The third strict candidate may score worse than Candidate 2; this is acceptable and can make the experiment history more credible. It must not be manually favored.
+- Existing snippets can support a mission only indirectly. Evidence-support rules must remain deterministic and conservative, and the UI should show the underlying snippet.
+- One development example is highly prone to overfitting. The product claim must stay limited to automated improvement on this fixed benchmark.
+- One held-out example can reveal an obvious regression but cannot establish generalization.
+- Measured latency varies and must not outrank task correctness.
+- Broad refactoring would consume the build window and risk breaking the cached demo path; deviations from the listed module changes require a plan update first.
 
 ## Decisions
 
-- 2026-07-16: Keep Node.js and the existing MediaWiki/cache adapter. The preferred Python layout is advisory, while an incremental Node path is smaller and already runnable.
-- 2026-07-16: Use a five-example Apollo v1 benchmark split 4/1. This is the minimum recommended benchmark size and establishes held-out discipline without expanding domains.
-- 2026-07-16: Use a deterministic benchmark-specific evaluator rather than an LLM evaluator in P0. It makes replay and tests independent of API access while retaining the documented five dimensions.
-- 2026-07-16: Use baseline plus three curated configs from an explicit search space. This satisfies the visible multiple-experiment requirement without a combinatorial grid.
-- 2026-07-16: Persist JSON artifacts and a latest artifact for the UI. SQLite and generalized history querying are unnecessary for the demo.
-- 2026-07-16: Keep `LLMScientist` outside the required P0 path. Model-proposed candidates are P1 and would weaken deterministic fallback.
+- 2026-07-16: Keep the existing Node modules and policy-oriented architecture; no Python migration or framework layer.
+- 2026-07-16: Keep the current two Apollo tasks. Task A is development; Task B is one qualitative held-out sanity check.
+- 2026-07-16: Optimize the existing set-based F1. Precision, coverage, and evidence support are diagnostics, not nominal weighted dimensions.
+- 2026-07-16: Preserve structured predictions and expose source snippets as evidence; do not synthesize natural-language answers.
+- 2026-07-16: Represent the external system as backend: wikipedia-mediawiki and model: null.
+- 2026-07-16: Use the three explicit candidate strategies as the entire P0 search space and add only one new strict verification variant.
+- 2026-07-16: Make any development failure disqualifying while preserving the failed record for the report.
+- 2026-07-16: Keep LLMScientist out of P0.
 
 ## Discoveries
 
-- The repository already has a coherent, dependency-free JavaScript vertical slice despite `AGENTS.md` suggesting typed Python; replacing it is not necessary for P0.
-- All repository files are currently untracked in git, so implementation must preserve the user's working tree and avoid assuming any file has a committed baseline.
-- Existing replay commands and both tests pass. The current demo records a development F1 gain from 0.500 to 0.727 and an unseen-task gain from 0.400 to 0.750, but those records omit most required reproducibility and evaluation fields.
-- `LLMScientist` exists but is unused by `AutoBenchOptimizer`; the current optimizer is fully deterministic and policy-name-specific.
-- `TASKS.md` accurately remains unchecked at the P0 level: reusable pieces exist, but none of its component exit criteria are complete as written.
+- The repository is tracked and the working tree was clean when this revision began; the previous untracked-files discovery was stale and has been removed.
+- The evaluation specification has not yet been narrowed: its current five-dimension weighted objective conflicts with this plan and is now an explicit Milestone 1 documentation gate.
+- Existing tests, replay validation, optimization, and held-out commands pass.
+- Current Task A replay improves F1 from 0.500 to 0.727 with targeted follow-up; Task B moves from 0.400 to 0.750, but Task B is only a qualitative sanity check.
+- The current optimizer stops after the first KEEP and therefore does not yet expose three comparable candidate experiments.
+- The proposed strict third candidate can reuse the existing targeted-follow-up queries and committed cache files, avoiding new network-dependent fixture work.
+- LLMScientist exists but is unused by the optimizer and is unnecessary for the visible P0 loop.
 
 ## Progress
 
 - [x] Repository and referenced documentation inspected; current commands validated.
-- [x] Smallest P0 execution plan written.
-- [ ] Milestone 1 not started.
-- [ ] Milestone 2 not started.
-- [ ] Milestone 3 not started.
-- [ ] Milestone 4 not started.
+- [x] Seven-hour P0 scope revised around the existing vertical slice.
+- [ ] P0 evaluation specification alignment not started.
+- [ ] Milestone 1 implementation not started.
+- [ ] Milestone 2 implementation not started.
+- [ ] Milestone 3 implementation not started.
+- [ ] Milestone 4 implementation not started.
